@@ -14,6 +14,7 @@
 | the first function catalogue | **done**: 8,271 addresses where two independent methods agree ([CATALOGUE.md](CATALOGUE.md)) |
 | the third method (a disassembler's analysis) | running |
 | the first C readings | **started**: five functions read and written up in `nonmatching/text/`, none compiled yet |
+| the compiler that produced the retail bytes | **identified**: SCEI PPC GCC 4.1.1, SDK270 revision 3019 ([COMPILER.md](COMPILER.md)) |
 | a qualified PPU compiler and its options | **not started** |
 
 ## The measured facts

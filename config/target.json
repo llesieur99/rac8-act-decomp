@@ -54,5 +54,19 @@
     {"index": 6, "vaddr": "0xC19500", "filesz": "0x20", "role": "sce-dynamic"},
     {"index": 7, "vaddr": "0xC19520", "filesz": "0x40", "role": "sce-segsym"}
   ],
-  "matching_compiler": null
+  "matching_compiler": null,
+  "compiler_stamps": {
+    "source": "the .comment section of the rebuilt ELF",
+    "tool": "tools/compiler_stamp.py",
+    "stamps": [
+      {"count": 106, "stamp": "GCC: (GNU) 4.1.1 (SDK270, $Rev: 3019 $)"},
+      {"count": 1, "stamp": "GCC: (GNU) 4.1.1 (SDK250, $Rev: 2824 $)"}
+    ],
+    "identified": "SCEI PPC GCC 4.1.1 (PlayStation 3 SDK270, revision 3019)",
+    "libraries": [
+      "Dinkumware C++ library (the SDK's libstdc++)",
+      "Lua 5.1.2 (Insomniac)",
+      "zlib 1.2.3"
+    ]
+  }
 }
