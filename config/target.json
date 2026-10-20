@@ -1,9 +1,20 @@
 {
-  "game": "Ratchet & Clank: A Crack in Time",
+  "game": "Ratchet & Clank Future: A Crack in Time",
   "platform": "PlayStation 3",
   "region": "USA",
   "content_id": "UP9000-NPUA80966_00-ACRACKINTIME0001",
   "title_id": "NPUA80966",
+  "param_sfo": {
+    "size": 1040,
+    "sha256": "46b9e7714a071f663fef3ba66b1ae776642d68c4e10d1244f0fce8ce474d6733",
+    "title": "Ratchet & Clank Future: A Crack In Time",
+    "title_id": "NPUA80966",
+    "version": "01.00",
+    "app_version": "01.20",
+    "ps3_system_version": "04.3000",
+    "category": "Library programs",
+    "endianness": "little"
+  },
   "package": {
     "size": 19928976896,
     "sha256": null,
@@ -14,8 +25,7 @@
     "platform": "PS3",
     "revision": "0x8000",
     "encryption": "AES-128-CTR"
-  },
-  "executable": {
+  },  "executable": {
     "path": "USRDIR/EBOOT.BIN",
     "size": 14518160,
     "sha256": "e69f2b5a053454ef90144d31c3cbb5b6ccfc5399745e9bbb73fca1680b25c81a",

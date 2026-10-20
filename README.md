@@ -1,7 +1,7 @@
-# Ratchet &amp; Clank: A Crack in Time — matching decompilation
+# Ratchet &amp; Clank Future: A Crack in Time — matching decompilation
 
-An early matching-decompilation workspace for **Ratchet &amp; Clank: A Crack in
-Time** on the PlayStation 3 (USA release, `NPUA80966`, content id
+An early matching-decompilation workspace for **Ratchet &amp; Clank Future: A
+Crack in Time** on the PlayStation 3 (USA release, `NPUA80966`, content id
 `UP9000-NPUA80966_00-ACRACKINTIME0001`).
 
 The goal is to rebuild the retail program in **C/C++ compiled**, with a proof:

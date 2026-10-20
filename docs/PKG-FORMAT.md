@@ -81,11 +81,14 @@ The target's layout:
 | Entry | Size | Note |
 |---|---|---|
 | `PS3LOGO.DAT` | 5,120 | |
-| `PARAM.SFO` | 1,040 | the title metadata |
+| `PARAM.SFO` | 1,040 | the title metadata: title `Ratchet & Clank Future: A Crack In Time`, title id `NPUA80966`, version `01.00`, app version `01.20`, system version `04.3000` |
 | `ICON0.PNG`, `ICON0_01..03.PNG` | 91,369 each | |
 | `PIC0..2.PNG`, `SND0.AT3` | | |
 | `USRDIR/EBOOT.BIN` | 14,518,160 | the main executable, see [SELF-FORMAT.md](SELF-FORMAT.md) |
 | `USRDIR/built/…` | 18.6 GiB in total | the game's assets, movies and audio |
+
+The `PARAM.SFO` is **little-endian**, unlike the PPU executable: its magic
+is `\0PSF` and its header fields are read with the opposite byte order.
 
 The package holds the retail disc's content, so the working copy needs a lot
 of room; extract only what a step needs.
