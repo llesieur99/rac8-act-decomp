@@ -54,6 +54,7 @@ Two facts shape the whole project:
 | [docs/METHOD.md](docs/METHOD.md) | the wave protocol, from the foundation lot to the pull request |
 | [docs/EVIDENCE.md](docs/EVIDENCE.md) | what counts as a proof, and what does not |
 | [docs/GATES.md](docs/GATES.md) | the gates: the body gate, the placement gate, the complete-program gate |
+| [docs/CATALOGUE.md](docs/CATALOGUE.md) | the function catalogue: how the boundaries are recovered, and on what evidence |
 | [docs/STATE.md](docs/STATE.md) | the anchor: where the project stands, and what to do next |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | the ordered work, and what each step needs |
 

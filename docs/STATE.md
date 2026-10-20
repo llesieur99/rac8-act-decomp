@@ -11,7 +11,8 @@
 | the SELF container is described | done |
 | the retail executable is decrypted and rebuilt into an ELF | done, in the contributor's local workspace |
 | the PPU ELF reader is published, with tests | done |
-| the function boundaries | **not started** |
+| the first function catalogue | **done**: 8,271 addresses where two independent methods agree ([CATALOGUE.md](CATALOGUE.md)) |
+| the third method (a disassembler's analysis) | running |
 | the first C source | **not started** |
 | a qualified PPU compiler and its options | **not started** |
 
@@ -44,11 +45,10 @@ No percentage is published for that reason.
 
 ## The next step
 
-1. Run a PPU analysis over the text segment (Ghidra's `PowerPC:BE:64`
-   language reads it well) and produce a first catalogue of function
-   boundaries.
-2. Cross-check the boundaries with an independent method (a prologue
-   scanner, the call graph, the data the code touches) so that the
-   catalogue is not a single tool's opinion.
-3. Start the first C sources on the functions the analysis names with
+1. Let the disassembler's analysis finish and compare it with the
+   published catalogue: the addresses where the three methods agree become
+   the function candidates, the others stay candidates.
+2. Start the first C sources on the functions the analysis names with
    confidence, and record what each one proves.
+3. Identify the compiler that produced the retail build, and qualify it on
+   a single function.

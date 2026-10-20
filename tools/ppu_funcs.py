@@ -150,6 +150,8 @@ def cmd_calls(elf: PpuElf, args: argparse.Namespace) -> int:
 
 def cmd_catalogue(elf: PpuElf, args: argparse.Namespace) -> int:
     rows = [(address, kind, evidence) for address, kind, evidence in build_catalogue(elf)]
+    if getattr(args, "confirmed", False):
+        rows = [row for row in rows if row[2] == "both"]
     return _write(rows, args)
 
 
@@ -182,7 +184,10 @@ def main(argv: list[str] | None = None) -> int:
 
     add("prologue", "the addresses with the SDK function prologue").set_defaults(func=cmd_prologue)
     add("calls", "the addresses the program calls").set_defaults(func=cmd_calls)
-    add("catalogue", "both methods, with their evidence").set_defaults(func=cmd_catalogue)
+    p_catalogue = add("catalogue", "both methods, with their evidence")
+    p_catalogue.add_argument("--confirmed", action="store_true",
+                             help="keep only the addresses both methods agree on")
+    p_catalogue.set_defaults(func=cmd_catalogue)
 
     args = parser.parse_args(argv)
     try:
