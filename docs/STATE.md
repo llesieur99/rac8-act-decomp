@@ -13,7 +13,7 @@
 | the PPU ELF reader is published, with tests | done |
 | the first function catalogue | **done**: 8,271 addresses where two independent methods agree ([CATALOGUE.md](CATALOGUE.md)) |
 | the third method (a disassembler's analysis) | running |
-| the first C source | **not started** |
+| the first C readings | **started**: five functions read and written up in `nonmatching/text/`, none compiled yet |
 | a qualified PPU compiler and its options | **not started** |
 
 ## The measured facts
@@ -48,7 +48,8 @@ No percentage is published for that reason.
 1. Let the disassembler's analysis finish and compare it with the
    published catalogue: the addresses where the three methods agree become
    the function candidates, the others stay candidates.
-2. Start the first C sources on the functions the analysis names with
-   confidence, and record what each one proves.
+2. Continue the C readings: the five functions in `nonmatching/text/` are
+   the beginning, and the next ones should be picked from the catalogue
+   the same way — a function whose behaviour the code makes clear.
 3. Identify the compiler that produced the retail build, and qualify it on
    a single function.
