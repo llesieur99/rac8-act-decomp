@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import os
 import re
+import subprocess
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -50,7 +51,27 @@ TEXT_SUFFIXES = (".py", ".md", ".json", ".yml", ".yaml", ".txt", ".cfg", ".toml"
 
 
 def tracked_files() -> list[str]:
-    """Return the repository's files, ignoring the git-ignored ones."""
+    """Return the repository's tracked files.
+
+    The tracked set is the right thing to look at: the local workspace
+    holds the game-derived material on purpose, and the guard must not
+    punish a contributor for keeping it there.
+    """
+    try:
+        result = subprocess.run(["git", "-C", ROOT, "ls-files"], check=True,
+                                capture_output=True, text=True)
+        pending = subprocess.run(
+            ["git", "-C", ROOT, "ls-files", "--others", "--exclude-standard"],
+            check=False, capture_output=True, text=True)
+    except (OSError, subprocess.CalledProcessError):
+        result = None
+        pending = None
+    if result is not None and result.stdout.strip():
+        files = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+        if pending is not None and pending.stdout.strip():
+            # Files that are not ignored yet: they would be committed.
+            files += [line.strip() for line in pending.stdout.splitlines() if line.strip()]
+        return sorted(set(files))
     out = []
     for base, dirs, files in os.walk(ROOT):
         dirs[:] = [d for d in dirs if d not in (".git", "__pycache__", ".venv", "venv")]
