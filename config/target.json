@@ -1,0 +1,48 @@
+{
+  "game": "Ratchet & Clank: A Crack in Time",
+  "platform": "PlayStation 3",
+  "region": "USA",
+  "content_id": "UP9000-NPUA80966_00-ACRACKINTIME0001",
+  "title_id": "NPUA80966",
+  "package": {
+    "size": 19928976896,
+    "sha256": null,
+    "content_table_entries": 8,
+    "file_entries": 874,
+    "files": 790,
+    "directories": 84,
+    "platform": "PS3",
+    "revision": "0x8000",
+    "encryption": "AES-128-CTR"
+  },
+  "executable": {
+    "path": "USRDIR/EBOOT.BIN",
+    "size": 14518160,
+    "sha256": "e69f2b5a053454ef90144d31c3cbb5b6ccfc5399745e9bbb73fca1680b25c81a",
+    "kind": "retail SELF (NPDRM)",
+    "key_revision": "0x001C",
+    "program_type": 8,
+    "npdrm_license": 2,
+    "npdrm_content_id": "UP9000-NPUA80966_00-ACRACKINTIME0001"
+  },
+  "ppu_elf": {
+    "size": 14515416,
+    "sha256": "85abff00df91134d6163e7084a8ba96ec04b13da78e3aa077bb2456a2c4daf94",
+    "class": "ELF64",
+    "endianness": "big",
+    "machine": "EM_NONE (0), PPU target",
+    "entry": "0xCA6B58",
+    "program_headers": 8,
+    "section_headers": 30,
+    "section_names": false,
+    "symbol_table": false
+  },
+  "segments": [
+    {"index": 0, "vaddr": "0x10000", "filesz": "0xC09560", "memsz": "0xC09560", "role": "text"},
+    {"index": 1, "vaddr": "0xC20000", "filesz": "0x1C527C", "memsz": "0x516630", "role": "data"},
+    {"index": 5, "vaddr": "0xD331F8", "filesz": "0x4", "memsz": "0x19C", "role": "tls"},
+    {"index": 6, "vaddr": "0xC19500", "filesz": "0x20", "role": "sce-dynamic"},
+    {"index": 7, "vaddr": "0xC19520", "filesz": "0x40", "role": "sce-segsym"}
+  ],
+  "matching_compiler": null
+}
