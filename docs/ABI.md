@@ -132,9 +132,27 @@ if (info->lr_save_p && (info->lr_save_inline_p || sibcall))
 The retail's epilogues use `r3`, `r4`, `r31` and others — 43 % of the
 target's epilogues do not use `r0`.  Every branch of the public toolchain
 repository (1.8.0, 1.9.0, 2.2.0, 2.4.0, 2.5.0, 2.7.0, 2.8.0, 3.0.0 to 3.7.0
-and 4.2.0) has that same line.  **The compiler that built the target is
-therefore not the one the public sources describe** — the difference is in
-the parts of the SDK's compiler that were never published.
+and 4.2.0) has that same line, and the compilers built from them (2.7.0,
+2.8.0, 3.6.0 and 4.2.0) all keep the link register in `r0`.
+
+The two games that mix the registers were built by two different
+compilers, and neither of them is in that repository:
+
+| Game | Stamp | In the public repository? |
+|---|---|---|
+| A Crack in Time | `SDK270 rev 3019` | the branch exists, but its epilogue is the one above |
+| Tools of Destruction | `CELL 4.1.2.7 rev 1826` | **no**: no branch of the repository carries that stamp |
+
+The `CELL 4.1.2.7` wording belongs to the PlayStation 4's compiler, and
+the repository stops at the PlayStation 3's SDKs (3.7.0 is the last one
+before it, and it stamps `SDK370 rev 3509`).  So the two games that mix the
+registers are the two whose compiler's register allocation was never
+published, and the games whose compiler *was* published — Jak 2, Jak 3,
+Jak and Daxter, LittleBigPlanet, Uncharted, Assassin's Creed — keep the
+link register in `r0` in every single function.
+
+That is the clearest statement the measurements support: **the difference
+is the compiler, not the code, and not the SDK.**
 
 That is the reason three of the readings are stuck (§ *The measurements* in
 [STATE.md](STATE.md)): the bytes agree with the retail ones right up to the
