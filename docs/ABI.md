@@ -81,7 +81,8 @@ the prologue uses is the register allocator's choice, and it is worth
 measuring, because it is where the rebuilt toolchain and the retail build
 disagree.
 
-Measured over every function of the catalogue of each executable:
+Measured over every function of the catalogue of each executable
+(`python tools/ppu_lr.py <eboot.elf>` does the measure):
 
 | Executable | Compiler | `r0` | `r4` | `r5` | `r6` | `r3` |
 |---|---|---|---|---|---|---|
