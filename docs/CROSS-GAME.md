@@ -51,8 +51,9 @@ targets, then compared with those games' own bytes:
 | A Crack in Time | SDK 2.7.0 (rev 3019) | `0x10638`, `0x4E2518` | **44 of 44 bytes** |
 | Jak 3 | SDK 3.6.0 (rev 3455) | `0x105A8`, `0x67AF8` | **44 of 44 bytes** |
 | Jak 2 | SDK 3.6.0 (rev 3455) | `0x105A8`, `0x67AE8` | **44 of 44 bytes** |
+| Jak and Daxter: The Precursor | SDK 3.6.0 (rev 3455) | `0x105A8`, `0x59BB8` | **44 of 44 bytes** |
 
-One source, three games, two SDKs, and the same forty-four bytes every
+One source, four games, two SDKs, and the same forty-four bytes every
 time.  What that rules out:
 
 * the flags are not a coincidence of one build — the same options reproduce

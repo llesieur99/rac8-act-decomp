@@ -17,7 +17,7 @@
 | the first byte-exact body | **done**: `module_init` at 0x10200, 44 bytes reproduced ([src/text/module_init.c](../src/text/module_init.c)) |
 | the other readings | in progress: three functions are a few bytes away |
 | a qualified PPU compiler and its options | **provisional**: `-O1 -mno-save-restore-tocbase` reproduces one function |
-| the same engine in other games | **done**: the matched function is in Jak 2 and Jak 3, at the same address ([CROSS-GAME.md](CROSS-GAME.md)) |
+| the same engine in other games | **done**: the matched function is in Jak 2, Jak 3 and Jak and Daxter, at the same address ([CROSS-GAME.md](CROSS-GAME.md)) |
 | a second SDK's toolchain | **done**: SDK 3.6.0 built from its own sources; the same source matches 44 of 44 bytes in Jak 3 and in Jak 2 |
 
 ## The measured facts

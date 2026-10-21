@@ -36,7 +36,8 @@
       "builds": [
         {"game": "Ratchet & Clank: A Crack in Time (USA NPUA80966)", "sdk": "SDK270", "callees": ["0x10638", "0x4E2518"], "result": "44 of 44 bytes"},
         {"game": "Jak 3", "sdk": "SDK360", "callees": ["0x105A8", "0x67AF8"], "result": "44 of 44 bytes"},
-        {"game": "Jak 2", "sdk": "SDK360", "callees": ["0x105A8", "0x67AE8"], "result": "44 of 44 bytes"}
+        {"game": "Jak 2", "sdk": "SDK360", "callees": ["0x105A8", "0x67AE8"], "result": "44 of 44 bytes"},
+        {"game": "Jak and Daxter: The Precursor", "sdk": "SDK360", "callees": ["0x105A8", "0x59BB8"], "result": "44 of 44 bytes"}
       ]
     }
   ],
