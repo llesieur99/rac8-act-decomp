@@ -17,7 +17,7 @@
   },
   "package": {
     "size": 19928976896,
-    "sha256": null,
+    "sha256": "0e02cee824eaaa49f4ac6d0b033873e76a8249f04af517db239927b860b81228",
     "content_table_entries": 8,
     "file_entries": 874,
     "files": 790,
@@ -25,6 +25,12 @@
     "platform": "PS3",
     "revision": "0x8000",
     "encryption": "AES-128-CTR"
+  },
+  "disc": {
+    "image_size": 24450170880,
+    "image_sha256": null,
+    "note": "the disc carries the same program in the original SELF container (header type 1); the package carries it in the 'app' container (header type 0x1C). The executable is at LBA 5056 on the disc.",
+    "executable_offset": 5056
   },  "executable": {
     "path": "USRDIR/EBOOT.BIN",
     "size": 14518160,

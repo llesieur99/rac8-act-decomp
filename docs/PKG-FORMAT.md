@@ -92,3 +92,22 @@ is `\0PSF` and its header fields are read with the opposite byte order.
 
 The package holds the retail disc's content, so the working copy needs a lot
 of room; extract only what a step needs.
+
+## The package and the disc
+
+The same program exists in two containers, and the difference is worth
+recording:
+
+| Source | Container | Header type |
+|---|---|---|
+| the disc image (`PS3_GAME/USRDIR/EBOOT.BIN`, LBA 5056) | the original **SELF** | `1` |
+| the package (`USRDIR/EBOOT.BIN`) | the repacked **app** | `0x1C` |
+
+Both start with `SCE\0` and both are NPDRM-encrypted with the same licence
+file; the metadata they carry is laid out differently, so the two need
+different readers.  The package is the convenient one: its header points
+straight at the ELF and at the metadata.
+
+Reading the disc image is still easy: it is an ISO9660 volume, and
+`extractps3iso` (the PS3 ISO tools) prints the tree with the LBA of every
+file.  The game data starts at LBA 1504, and the executable is at LBA 5056.
