@@ -39,6 +39,34 @@ somewhere else in each build.
 Tools of Destruction no longer has that function: the engine was rewritten
 between the two games, so it is a different program at that address.
 
+## The same source, three builds
+
+The point of building the second toolchain is that it makes the check
+independent.  The source of `module_init` was compiled with the SDK 3.6.0
+compiler and linked at `0x10200` with **Jak 3's** and **Jak 2's** call
+targets, then compared with those games' own bytes:
+
+| Game | Compiler | Callee targets | Result |
+|---|---|---|---|
+| A Crack in Time | SDK 2.7.0 (rev 3019) | `0x10638`, `0x4E2518` | **44 of 44 bytes** |
+| Jak 3 | SDK 3.6.0 (rev 3455) | `0x105A8`, `0x67AF8` | **44 of 44 bytes** |
+| Jak 2 | SDK 3.6.0 (rev 3455) | `0x105A8`, `0x67AE8` | **44 of 44 bytes** |
+
+One source, three games, two SDKs, and the same forty-four bytes every
+time.  What that rules out:
+
+* the flags are not a coincidence of one build — the same options reproduce
+  the function in a compiler two SDK revisions apart;
+* the source is not a shape that happens to fit — it fits three different
+  call targets, so the calls really are calls and the layout really is the
+  compiler's;
+* the linker model is right — a candidate linked at the retail address with
+  the retail callees lands on the retail bytes, in every game.
+
+This is the strongest evidence the project has that the method is sound.
+It is still not a match: the body gate is open, the complete-program gate
+is closed, and the counts stay what they are (see [GATES.md](GATES.md)).
+
 ## How the search is done
 
 The addresses are not the same from one game to the next, so the search

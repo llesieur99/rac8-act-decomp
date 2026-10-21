@@ -171,6 +171,23 @@ code does the opposite.  The flags are therefore recorded in
 [`config/compiler.json`](../config/compiler.json) as *provisional* — one
 function is not enough to qualify a build.
 
+### The second toolchain
+
+The SDK 3.6.0 toolchain (GCC 4.1.1, revision 3455) was built the same way,
+from the same sources, with the same recipe.  It is the compiler **Jak 2
+and Jak 3** were built with, so it is the one that can check a source
+against a second game:
+
+```
+ppu-lv2-gcc (GCC) 4.1.1 (SDK360, $Rev: 3455 $)
+```
+
+With it, the source of `module_init` reproduces **44 of 44 bytes** in Jak 3
+and in Jak 2 — the same source, the same options, and the same bytes as in
+*A Crack in Time* (see [CROSS-GAME.md](CROSS-GAME.md)).  Two toolchains two
+SDK revisions apart agreeing on forty-four bytes is what turns the flags
+from a guess into a measurement.
+
 ### Route B — the open route
 
 The PPU is an open target, and there are open toolchains for it:

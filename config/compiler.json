@@ -9,6 +9,12 @@
       "compiler": "ppu-lv2-gcc",
       "libgcc": "499,648 bytes, in the SDK's three multilib variants (default, fno-exceptions, fno-exceptions/fno-rtti)",
       "note": "the SDK's C++ library is a separate prebuilt archive and is not part of the toolchain sources: C++ compiles to an object file but does not link yet"
+    },
+    "second_toolchain": {
+      "stamp": "GCC: (GNU) 4.1.1 (SDK360, $Rev: 3455 $)",
+      "sdk": "PlayStation 3 SDK 3.6.0 (revision 3455)",
+      "why": "it is the compiler Jak 2 and Jak 3 were built with, so it is the one that can check a source against a second game",
+      "status": "built from the SDK's own sources, same recipe as the 2.7.0 one"
     }
   },
   "flags": {
@@ -26,7 +32,12 @@
       "address": "0x10200",
       "extent": "0x10200 .. 0x1022C",
       "bytes": 44,
-      "flags": ["-O1", "-mno-save-restore-tocbase"]
+      "flags": ["-O1", "-mno-save-restore-tocbase"],
+      "builds": [
+        {"game": "Ratchet & Clank: A Crack in Time (USA NPUA80966)", "sdk": "SDK270", "callees": ["0x10638", "0x4E2518"], "result": "44 of 44 bytes"},
+        {"game": "Jak 3", "sdk": "SDK360", "callees": ["0x105A8", "0x67AF8"], "result": "44 of 44 bytes"},
+        {"game": "Jak 2", "sdk": "SDK360", "callees": ["0x105A8", "0x67AE8"], "result": "44 of 44 bytes"}
+      ]
     }
   ],
   "body_gate": "open for the functions listed above; closed for everything else"

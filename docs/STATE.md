@@ -18,7 +18,7 @@
 | the other readings | in progress: three functions are a few bytes away |
 | a qualified PPU compiler and its options | **provisional**: `-O1 -mno-save-restore-tocbase` reproduces one function |
 | the same engine in other games | **done**: the matched function is in Jak 2 and Jak 3, at the same address ([CROSS-GAME.md](CROSS-GAME.md)) |
-| a second SDK's toolchain | in progress: SDK 3.6.0 (the one Jak 2 and Jak 3 were built with) is being compiled |
+| a second SDK's toolchain | **done**: SDK 3.6.0 built from its own sources; the same source matches 44 of 44 bytes in Jak 3 and in Jak 2 |
 
 ## The measured facts
 
@@ -62,6 +62,21 @@ With the SDK's compiler and the flags `-O1 -mno-save-restore-tocbase`:
 The last line is the kind of result the catalogue is for: the address was a
 candidate, and the evidence says it is a block inside a bigger function.
 
+The three that do not match yet all fail the same way: the compiler keeps
+the link register in `r0` where the retail code keeps it in `r3`, `r4` or
+`r5`.  The register is the allocator's choice, and the retail's choice
+follows the register the first argument uses — so the source form that is
+still missing is the one that makes the compiler reuse that register.
+What is measured across the whole executable:
+
+| Link register | Functions |
+|---|---|
+| `r0` | 8,323 (37 %) |
+| `r4` | 5,681 (25 %) |
+| `r5` | 4,900 (22 %) |
+| `r3` | 627 (3 %) |
+| the others | the rest |
+
 ## What the measurements taught about the ABI
 
 Three things came out of the comparisons and are written up in
@@ -82,11 +97,12 @@ function.
 ## The next step
 
 1. Close the three other readings: each is a few bytes away, and the
-   difference says what the source form still gets wrong.
+   difference says what the source form still gets wrong — in all three,
+   the register the compiler keeps the link register in.
 2. Work the catalogue from the top: the functions whose behaviour the
    analysis makes clear, one at a time, each one ending in a comparison.
 3. Qualify the flags on more than one function, so that
    `config/compiler.json` stops being provisional.
-4. Rebuild the matched function with the **SDK 3.6.0** compiler and link it
-   with Jak 3's call targets: the same source, a different SDK and a
-   different game would give a second, independent byte-exact match.
+4. Extend the cross-game check: the same source, the same options and the
+   same bytes in three games already; the next check is a function that is
+   *not* the engine's initialisation.
