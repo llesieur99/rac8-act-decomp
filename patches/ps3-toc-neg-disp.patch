@@ -30,6 +30,8 @@ A modification of a GPL file is under the GPL, so this patch is published
 under the same terms, with the notices kept.  It touches no file that Sony
 added to GCC, and quotes no SDK header, library or sample.  See
 patches/README.md for what it does and what it buys.
+diff --git a/gcc/config/rs6000/rs6000.opt b/gcc/config/rs6000/rs6000.opt
+index e65065f..8bc253d 100644
 --- a/gcc/config/rs6000/rs6000.c
 +++ b/gcc/config/rs6000/rs6000.c
 @@ -3242,7 +3242,7 @@
@@ -89,7 +91,7 @@ patches/README.md for what it does and what it buys.
        break;
  
  #if TARGET_MACHO
-@@ -16196,7 +16215,8 @@
+@@ -16199,7 +16218,8 @@
      }
  
    /* If we are using RS6000_PIC_OFFSET_TABLE_REGNUM, we need to set it up.  */
@@ -121,32 +123,23 @@ patches/README.md for what it does and what it buys.
     `PIC_OFFSET_TABLE_REGNUM' is clobbered by calls.  Do not define
 --- a/gcc/config/rs6000/rs6000.opt
 +++ b/gcc/config/rs6000/rs6000.opt
-@@ -298,3 +298,25 @@
- Target RejectNegative Joined UInteger Var(rs6000_save_restore_funcs)
- Call functions to save and restore registers when it decreases the size of a function by N or more instructions
- 
-+; The register the TOC entries are addressed from in the minimal TOC
-+; mode.  The SDK's compiler copies the TOC base into r30 and addresses
-+; the entries from that copy, so that reading a TOC entry takes two
-+; instructions ("lwz r30, .LCTOC0@toc(2)" then "lwz rX, off(r30)").
-+; The retail's compiler addresses the entries from r2 directly, so that
-+; one instruction reads them ("lwz r30, off(r2)"), and r30 stays
-+; available for the general purpose registers.
-+mps3-toc-direct
+@@ -312,3 +312,16 @@
+ mps3-lr-restore-reg=
+ Target Var(ps3_lr_restore_reg) Init(0) Joined UInteger
+ The general purpose register the epilogue reloads the link register into.
++
++; The retail's compiler reads the entry of the TOC in one instruction, from
++; r2, where the SDK's backend copies the base into r30 and takes two.
++; And it folds a negative displacement into the load, where the D-form's
++; displacement is tested as unsigned and the address is computed in 64 bits
++; then truncated.
++mps3-toc-direct=
 +Target Var(ps3_toc_direct) Init(0)
-+Address the TOC entries from r2 in the minimal TOC mode
++Read the entry of the TOC in one instruction, from r2.
 +
-+; The negative displacements of the loads and the stores.  The
-+; displacement of a D-form instruction is a signed 16 bit quantity, but
-+; the SDK's compiler tests it as an unsigned one: a negative
-+; displacement is then rejected, the address is computed in 64 bits and
-+; truncated to 32 bits (an "addi" and a "clrldi"), where the retail's
-+; compiler folds the displacement into the instruction itself ("lwz rX,
-+; -0x7fec(r30)").
-+mps3-neg-disp
++mps3-neg-disp=
 +Target Var(ps3_neg_disp) Init(0)
-+Fold a negative displacement into the load or the store
-+
++Fold a negative displacement into the load.
 --- a/gcc/tree-ssa-address.c
 +++ b/gcc/tree-ssa-address.c
 @@ -225,15 +225,38 @@
@@ -162,9 +155,9 @@ patches/README.md for what it does and what it buys.
  #else
 -    off = immed_double_const (TREE_INT_CST_LOW (addr->offset),
 -			      TREE_INT_CST_HIGH (addr->offset), Pmode);
- /* CELL LOCAL End */
-+      enum machine_mode off_mode = Pmode;
 +/* CELL LOCAL End */
++      enum machine_mode off_mode = Pmode;
+ /* CELL LOCAL End */
  #endif /* CELL LOCAL */
 +
 +      /* The offset is a pointer-sized quantity, and it is signed: build
@@ -192,43 +185,3 @@ patches/README.md for what it does and what it buys.
    else
      off = NULL_RTX;
  
---- a/gcc/expr.c
-+++ b/gcc/expr.c
-@@ -8264,6 +8264,37 @@
- 		op0 = force_operand (op0, target);
- 	      return REDUCE_BIT_FIELD (op0);
- 	    }
-+	  else if (TREE_CODE (TREE_OPERAND (exp, 1)) == INTEGER_CST
-+		   && GET_MODE_BITSIZE (mode) <= HOST_BITS_PER_WIDE_INT
-+		   && ps3_neg_disp
-+		   && (modifier == EXPAND_SUM || modifier == EXPAND_INITIALIZER))
-+	    {
-+	      /* A sum of a value and a constant, used as an address.  The
-+		 retail's compiler folds the displacement into the
-+		 instruction; the SDK's compiler computes the address in 64
-+		 bits and truncates it to 32 bits.  -mps3-neg-disp selects
-+		 the retail's behaviour.  */
-+	      rtx constant_part;
-+
-+	      op0 = expand_expr (TREE_OPERAND (exp, 0), subtarget, VOIDmode,
-+				 (modifier == EXPAND_INITIALIZER
-+				  ? EXPAND_INITIALIZER : EXPAND_SUM));
-+	      if (! CONSTANT_P (op0))
-+		{
-+		  /* The constant keeps its sign: a displacement of -4096
-+		     is -4096, and not 0xfffff000.  */
-+		  tree ctype = TREE_TYPE (TREE_OPERAND (exp, 1));
-+		  int width = TYPE_PRECISION (ctype);
-+		  HOST_WIDE_INT val = TREE_INT_CST_LOW (TREE_OPERAND (exp, 1));
-+
-+		  val &= ((HOST_WIDE_INT) 1 << width) - 1;
-+		  if (! TYPE_UNSIGNED (ctype)
-+		      && (val & ((HOST_WIDE_INT) 1 << (width - 1))))
-+		    val |= -1 << width;
-+		  constant_part = gen_int_mode (val, mode);
-+		  return simplify_gen_binary (PLUS, mode, op0, constant_part);
-+		}
-+	    }
- 	}
- 
-       /* No sense saving up arithmetic to be done

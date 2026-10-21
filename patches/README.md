@@ -124,9 +124,11 @@ Two more rules of the retail's code, both of them in the SDK's compiler:
   truncated; a positive offset is folded, a negative one never is.
 
 The patch adds two options, both **off by default**: `-mps3-toc-direct` and
-`-mps3-neg-disp`.  It touches five files of upstream GCC — `rs6000.c`,
-`rs6000.h`, `rs6000.opt`, `tree-ssa-address.c` and `expr.c` — all under the
-GPL, and nothing that Sony added.
+`-mps3-neg-disp`.  It touches four files of upstream GCC — `rs6000.c`,
+`rs6000.h`, `rs6000.opt` and `tree-ssa-address.c` — all under the GPL, and
+nothing that Sony added.  It applies **on top of** the first patch: both
+declare options in the same option file, so the two are applied in that
+order.
 
 ### What it buys, and what it does not
 
