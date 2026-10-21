@@ -43,8 +43,8 @@ from ppu_elf import PpuElf, ElfError  # noqa: E402
 STDU_R1 = 0xF8210000
 # ``mflr rX`` is the mfspr family with the extended opcode 0x2A6; the
 # destination register sits in bits 21-25.
-MFLR_MASK = 0xFF1FFCFF
-MFLR_VALUE = 0x7C0800A6
+MFLR_MASK = 0xFC1FFFFF
+MFLR_VALUE = 0x7C0802A6
 
 # The call instruction: the unconditional branch with the link bit set
 # (opcode 18, LK at bit 0; AA at bit 1).

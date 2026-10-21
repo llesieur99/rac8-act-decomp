@@ -67,6 +67,15 @@ class PpuFuncsTest(unittest.TestCase):
         addresses = [c.address for c in ppu_funcs.call_targets(self.elf)]
         self.assertEqual(addresses, [0x1003C])
 
+    def test_the_link_register_may_be_saved_in_any_register(self):
+        # ``mflr r12``: the compiler uses any general register, and a
+        # narrower mask would miss every function that uses one of the
+        # higher ones
+        elf = ppu_elf.PpuElf(build_elf([0xF821FF91, 0x7C0802A6 | (12 << 21)]),
+                             "high register")
+        self.assertEqual([c.address for c in ppu_funcs.prologue_candidates(elf)],
+                         [0x10000])
+
     def test_an_absolute_branch_is_not_a_call(self):
         # ``bla 0x20000``: the target is an address, not a displacement, so
         # it names no function the caller calls.

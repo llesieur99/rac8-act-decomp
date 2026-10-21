@@ -41,7 +41,12 @@ The scan is cheap and it has no false negative on a function that follows
 the SDK's shape, but it has false positives, and they are systematic: the
 SDK writes the frame setup before *or* after the `mflr`, so a scan that
 accepts either order also accepts the **second instruction of a function**.
-2,299 of the target's 22,592 prologue candidates are exactly that.
+2,299 of the target's prologue candidates are exactly that.
+
+The link register is saved in **any** general register, so the scan has to
+match all of them: a mask that only clears the low three bits of the
+register field sees 22,592 candidates instead of 24,224, and misses the
+1,632 functions that keep the link register in `r8` or above.
 
 ### The call scan
 
@@ -82,8 +87,8 @@ and the frame setup comes before or after the `mflr` (see above).
 |---|---|
 | **module descriptor (the truth)** | **34,482** |
 | flow bounds | 31,512 |
-| prologue candidates | 22,592 |
-| distinct call targets | 26,280 |
+| prologue candidates | 24,224 |
+| distinct call targets | 15,328 |
 | the two cheap methods together (the catalogue before) | 8,271 |
 | a disassembler's independent sample | 106, of which 105 are call targets |
 
