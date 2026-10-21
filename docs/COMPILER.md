@@ -118,6 +118,34 @@ functions read so far: compile the source with the SDK's compiler, link
 it at the measured address, and compare every byte
 ([tools/compare_body.py](../tools/compare_body.py) does the comparison).
 
+### The first result
+
+The compiler is built from its own sources, in a container, with a host
+toolchain old enough to build GCC 4.1.1.  It reports itself as
+
+```
+ppu-lv2-gcc (GCC) 4.1.1 (SDK270, $Rev: 3019 $)
+```
+
+which is the very stamp the retail executable carries.
+
+One flag turned out to matter more than the optimisation level:
+**`-mno-save-restore-tocbase`**.  Without it, the compiler keeps a TOC
+base and a back chain in the frame, which the retail code does not have.
+With it, the prologue and the epilogue of the first function came out
+byte for byte identical to the retail ones, and the whole function
+matched:
+
+| Function | Address | Bytes | Flags | Result |
+|---|---|---|---|---|
+| `module_init` | `0x10200` | 44 | `-O1 -mno-save-restore-tocbase` | **match** |
+
+At `-O2` the same function differs by two instructions: the compiler
+restores the stack pointer before the link register, where the retail
+code does the opposite.  The flags are therefore recorded in
+[`config/compiler.json`](../config/compiler.json) as *provisional* — one
+function is not enough to qualify a build.
+
 ### Route B — the open route
 
 The PPU is an open target, and there are open toolchains for it:

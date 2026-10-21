@@ -1,0 +1,28 @@
+{
+  "compiler": {
+    "name": "SCEI PPC GCC 4.1.1",
+    "stamp": "GCC: (GNU) 4.1.1 (SDK270, $Rev: 3019 $)",
+    "target": "ppu-lv2",
+    "sdk": "PlayStation 3 SDK 2.7.0 (revision 3019)",
+    "status": "identified from the executable's own .comment section"
+  },
+  "flags": {
+    "status": "provisional: qualified on one function only",
+    "tested": ["-O1 -mno-save-restore-tocbase"],
+    "notes": [
+      "-mno-save-restore-tocbase is what removes the TOC base from the frame; without it the compiler keeps a back chain the retail code does not have.",
+      "-O1 is what reproduces the retail epilogue exactly; at -O2 the order of the mtlr and the stack restore differs."
+    ]
+  },
+  "matches": [
+    {
+      "function": "module_init",
+      "source": "src/text/module_init.c",
+      "address": "0x10200",
+      "extent": "0x10200 .. 0x1022C",
+      "bytes": 44,
+      "flags": ["-O1", "-mno-save-restore-tocbase"]
+    }
+  ],
+  "body_gate": "open for the functions listed above; closed for everything else"
+}

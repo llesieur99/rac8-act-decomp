@@ -12,10 +12,11 @@
 | the retail executable is decrypted and rebuilt into an ELF | done, in the contributor's local workspace |
 | the PPU ELF reader is published, with tests | done |
 | the first function catalogue | **done**: 8,271 addresses where two independent methods agree ([CATALOGUE.md](CATALOGUE.md)) |
-| the third method (a disassembler's analysis) | running |
-| the first C readings | **started**: five functions read and written up in `nonmatching/text/`, none compiled yet |
-| the compiler that produced the retail bytes | **identified**: SCEI PPC GCC 4.1.1, SDK270 revision 3019 ([COMPILER.md](COMPILER.md)) |
-| a qualified PPU compiler and its options | **not started** |
+| the third method (a disassembler's analysis) | **done**: 105 of its 106 functions are call targets of the published scan |
+| the compiler | **identified and built**: SCEI PPC GCC 4.1.1 (SDK270), compiled from its own sources ([COMPILER.md](COMPILER.md)) |
+| the first byte-exact body | **done**: `module_init` at 0x10200, 44 bytes reproduced ([src/text/module_init.c](../src/text/module_init.c)) |
+| the other readings | in progress: three functions are a few bytes away |
+| a qualified PPU compiler and its options | **provisional**: `-O1 -mno-save-restore-tocbase` reproduces one function |
 
 ## The measured facts
 
@@ -46,11 +47,9 @@ No percentage is published for that reason.
 
 ## The next step
 
-1. Let the disassembler's analysis finish and compare it with the
-   published catalogue: the addresses where the three methods agree become
-   the function candidates, the others stay candidates.
-2. Continue the C readings: the five functions in `nonmatching/text/` are
-   the beginning, and the next ones should be picked from the catalogue
-   the same way — a function whose behaviour the code makes clear.
-3. Identify the compiler that produced the retail build, and qualify it on
-   a single function.
+1. Close the three other readings: each is a few bytes away, and the
+   difference says what the source form still gets wrong.
+2. Work the catalogue from the top: the functions whose behaviour the
+   analysis makes clear, one at a time, each one ending in a comparison.
+3. Qualify the flags on more than one function, so that
+   `config/compiler.json` stops being provisional.
