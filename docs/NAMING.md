@@ -101,11 +101,18 @@ difference between a plausible model and the machine.
 
 ## The campaign
 
-The chain was run over a sample of **80 functions**, spread over the whole
-executable and over twenty link units, and every sheet was checked
-automatically for consistency — that the name agrees with the module, with
-the type of the global and with the class.  **No sheet was left doubtful**;
-fifty remarks were raised and resolved.
+The chain was run over **every** function of the catalogue — 34,482 of them
+— and every function got a sheet: a name in the form `Module::method`, a
+level of proof, and the reason for it.  The naming rule is deterministic,
+in twelve steps, and eleven kinds of proof feed it (the string a function
+reads, an assertion, a class, a named global, a dispatch table, a format
+string, a source file, a linked module, the link unit, the neighbours, the
+callers).
+
+The coherence control applies **thirteen rules** automatically: a name has
+to agree with the module, with the type of the global, with the class and
+with the callers.  No sheet was blocked, and the doubtful ones are kept
+apart with a status rather than dropped silently.
 
 ## The coverage, measured
 
@@ -113,14 +120,45 @@ Over the **34,482** procedures the catalogue now holds:
 
 | | Count | Share |
 |---|---:|---:|
-| the name is **in the binary** (`Classe::methode:`) | 9 | 0.03 % |
-| **nameable with a proof** (an assertion with a file and a line, or a named global) | 291 | 0.8 % |
-| **deducible** (the function touches a typed global, so its signature follows) | 16,548 | 48.0 % |
-| describable only | the rest | |
+| the name is **proved** (a message, an assertion, a class, a named global) | 236 | 0.7 % |
+| the name is **deducible** (the structure it works on) | 16,518 | 47.9 % |
+| the name is **described** | 34,482 | 100 % |
+| the name is its own (not a fallback) | 1,439 | 4.2 % |
 
-The third line is the one that matters for the matching: **half of the
+The second line is the one that matters for the matching: **half of the
 program's functions have a signature that can be deduced** from the
 globals they touch, and a signature is what a candidate needs.
+
+## Two limits worth knowing
+
+**The dispatch tables are filled at run time.**  74 of them were found, 24
+of them used, 114 indirect call sites, 398 functions — and **not one method
+can be named from them**, because the table is filled when the program
+starts.  That is a hard limit: the static analysis can say that a
+function is called through a table, and which table, but not which method
+it is.  It is better to say so than to invent a name.
+
+**17,963 functions — 52 % of the program — have no proof at all**: no
+string, no named global, no module.  They carry a fallback name, and the
+project's rule says so: a descriptive name is a name with a stated
+reason.
+
+## The link unit is a neighbourhood
+
+The unit the descriptor names is not a translation unit: it is a
+*neighbourhood* — a maximal block of 0x400 bytes, extended to 0x2000 when
+the functions are contiguous.  Past eight functions, a unit is only named
+by a strong proof or by two agreeing voices.  That stricter measure
+removed a false attribution the laxer one had made: the module's
+initialisation function had been named after an isolated credit mention.
+
+## The index
+
+The 46 modules are indexed with their classes, their named globals and
+their source files, and the functions are distributed over them: the
+third-party libraries take the largest shares, and a fifth of the program
+belongs to no module at all — the core of the engine, which the compiler
+put outside every module.
 
 ## A correction
 
@@ -154,5 +192,7 @@ publish what it knows about the program's shape.
   them, the module they belong to and their callers are the only
   evidence, and the name has to stay a description of the place
   (`module_link_…`, `float_to_short_…` in `src/text/`).
+* The names of the methods reached through a dispatch table: the table is
+  filled at run time, so the method is not in the binary.
 * The third-party libraries' names come from their own sources, which are
   not the studio's and are not in the repository.
