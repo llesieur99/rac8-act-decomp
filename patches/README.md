@@ -44,6 +44,20 @@ git apply --directory=gcc patches/ps3-lr-reg.patch
 and the compiler is then rebuilt as usual.  The same code is present in the
 2.8.0, 3.6.0 and 4.2.0 branches, so the patch applies to them as well.
 
+**The four patches of the 2.7.0 branch apply in this order** — the second,
+the third and the fourth are written against the sources the previous ones
+leave:
+
+```sh
+git apply --directory=gcc patches/ps3-lr-reg.patch
+git apply --directory=gcc patches/ps3-toc-neg-disp.patch
+git apply --directory=gcc patches/ps3-neg-disp-completion.patch
+git apply --directory=gcc patches/ps3-lr-sink.patch
+```
+
+Each of them adds its own options, and each of the options is off by
+default except the sinking, which is the retail's behaviour.
+
 ## What it buys
 
 14,520 of the target's 23,333 functions with a frame were blocked on the
@@ -154,6 +168,27 @@ writing the patch.
 
 With the patch, all 2,505 byte-exact functions still verify byte for byte.
 
+## `ps3-lr-sink.patch` — letting the scheduler sink the save
+
+The retail's compiler lets the instruction scheduler sink the **save of
+the link register into the body** of the function.  The store is not
+necessarily the third instruction: it comes after the load of a global,
+after the copy of an argument, just before the call it belongs to.
+
+GCC 4.1 marks that store as *frame related*, and a frame-related
+instruction may not be moved — so the store stays in the prologue and the
+candidate stops matching.
+
+The patch clears the flag on that one store.  It adds the option
+`-mps3-lr-sink`, **on by default**, because that is what the retail does;
+`-mno-ps3-lr-sink` keeps GCC 4.1's behaviour.  It touches two files of
+upstream GCC — `rs6000.c` and `rs6000.opt` — both under the GPL.
+
+**Every one of the 2,505 byte-exact functions still reproduces the retail
+bytes with it** ✓✓✓.  The sinking changes nothing that was already
+right, and it removes one of the two things that stood between a
+candidate and the retail's functions that read a global.
+
 ## The validation on a second game and a second compiler
 
 The patch was checked on *Tools of Destruction*, the other Insomniac game,
@@ -191,7 +226,14 @@ Two facts came out of the exercise:
 
 ## What the patches do not fix
 
-The order of the epilogue's `mtlr` and the stack restore is not fixed by
-the source: the reconstruction restores the stack first, and the retail
-code keeps the `mtlr` first in 87 % of its functions.  Two experiments on
-the frame's size did not change it, so the cause is still open.
+The order of the epilogue's `mtlr` and the stack restore is **not** a
+compiler difference: the reconstruction reproduces the retail's order in
+the sixty-six functions whose source is known, and the order follows the
+shape of the source — a function whose epilogue ends with the `mtlr`
+first restores at least one callee-saved register.  See
+[ABI.md](../docs/ABI.md).
+
+What the patches do not fix is the **source's shape**: the retail's
+functions read a global through the TOC in one instruction, the SDK's
+compiler knows only the address model, and the two forms have to be
+recovered from the bytes.

@@ -375,6 +375,41 @@ The retail code saves the link register with `mflr` into a register and
 then stores it; which register it uses is the register allocator's choice,
 and it differs from function to function.
 
+## Where the link register's save lands
+
+The `mflr` is almost always the second instruction of the function, right
+after the `stdu`: **21,801 times out of 21,824** ✓.  In nineteen functions
+it comes later in the body, and in four it is not in the first
+instructions at all.
+
+The **store** is a different matter.  It is not necessarily the third
+instruction:
+
+```
+00315188  stdu   r1, -0x80(r1)
+0031518C  mflr   r5
+00315190  std    r30, 0x70(r1)
+00315194  lwz    r30, -0x700c(r2)   ; the load of a global
+00315198  mr     r9, r3             ; the copy of an argument
+0031519C  std    r5, 0x90(r1)       ; the save of the link register, here
+```
+
+The store has been **sunk into the body** — it comes after the load of the
+global and after the copy of the argument, and before the call it belongs
+to.  The retail's compiler lets the instruction scheduler do that.
+
+**GCC 4.1 does not**, because it marks that store as *frame related*, and
+a frame-related instruction may not be moved.  The difference is small in
+the bytes and large in the consequences: it is what stands between a
+candidate and the retail's functions that read a global.
+
+The patch [`ps3-lr-sink.patch`](../patches/ps3-lr-sink.patch) clears the
+flag on that one store, and adds the option that controls it
+(`-mps3-lr-sink`, on by default; `-mno-ps3-lr-sink` keeps GCC 4.1's
+behaviour).  **Every one of the 2,505 byte-exact functions still
+reproduces the retail bytes with it** ✓✓✓ — the sinking changes nothing
+that was already right, and it is what the retail does.
+
 ## The epilogue's two shapes
 
 The retail code ends its functions in two ways:
