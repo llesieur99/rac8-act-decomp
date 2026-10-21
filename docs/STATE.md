@@ -1,6 +1,6 @@
 # Where the project stands
 
-**Date:** 2026-10-20
+**Date:** 2026-10-21
 
 ## What exists
 
@@ -17,6 +17,8 @@
 | the first byte-exact body | **done**: `module_init` at 0x10200, 44 bytes reproduced ([src/text/module_init.c](../src/text/module_init.c)) |
 | the other readings | in progress: three functions are a few bytes away |
 | a qualified PPU compiler and its options | **provisional**: `-O1 -mno-save-restore-tocbase` reproduces one function |
+| the same engine in other games | **done**: the matched function is in Jak 2 and Jak 3, at the same address ([CROSS-GAME.md](CROSS-GAME.md)) |
+| a second SDK's toolchain | in progress: SDK 3.6.0 (the one Jak 2 and Jak 3 were built with) is being compiled |
 
 ## The measured facts
 
@@ -85,3 +87,6 @@ function.
    analysis makes clear, one at a time, each one ending in a comparison.
 3. Qualify the flags on more than one function, so that
    `config/compiler.json` stops being provisional.
+4. Rebuild the matched function with the **SDK 3.6.0** compiler and link it
+   with Jak 3's call targets: the same source, a different SDK and a
+   different game would give a second, independent byte-exact match.

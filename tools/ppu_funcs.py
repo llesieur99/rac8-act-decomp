@@ -59,16 +59,19 @@ class Candidate:
 
 
 def _text_range(elf: PpuElf) -> tuple[int, int]:
-    """Return the (address, size) of the segment that holds the code."""
-    best = None
-    for ph in elf.program_headers():
-        if not ph.is_load or (ph.flags & 0x4) == 0:
-            continue
-        if best is None or ph.filesz > best.filesz:
-            best = ph
-    if best is None:
+    """Return the (address, size) of the segment that holds the code.
+
+    The PPU executables carry the SCE flags next to the usual permission
+    bits, and a large *data* segment may have the executable bit set, so the
+    segment is not chosen by its size: the code is the lowest one that
+    carries any payload.
+    """
+    segments = [ph for ph in elf.program_headers()
+                if ph.is_load and ph.filesz and (ph.flags & 0x4)]
+    if not segments:
         raise ElfError("no executable segment found")
-    return best.vaddr, best.filesz
+    ph = min(segments, key=lambda segment: segment.vaddr)
+    return ph.vaddr, ph.filesz
 
 
 def _words(elf: PpuElf) -> Iterator[int]:
