@@ -137,6 +137,23 @@ library the retail executable links against.  The SDK's C++ library is a
 C++ can be compiled to an object file but not linked yet; that does not
 affect the matching, which compares object code.
 
+That runtime is checked the same way as the game: the retail executable
+links libgcc statically, so the library's own code is in the text, and the
+functions the game uses are **byte-identical** to the ones our build
+produces:
+
+| Function | Bytes | In the retail executable at |
+|---|---|---|
+| `frame_downheap` | 320 | `0x918B48` |
+| `read_sleb128` | 88 | `0x9155A0` |
+| `read_uleb128` | 56 | `0x915568` |
+| `_Unwind_DeleteException` | 80 | `0x915630` |
+| `fde_unencoded_compare` | 40 | `0x918B20` |
+
+The other functions of the library are simply not linked into the game:
+the linker only pulls what the program needs, so their absence from the
+retail executable is not a difference.
+
 One flag turned out to matter more than the optimisation level:
 **`-mno-save-restore-tocbase`**.  Without it, the compiler keeps a TOC
 base and a back chain in the frame, which the retail code does not have.
