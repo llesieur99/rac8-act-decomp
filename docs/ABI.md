@@ -120,6 +120,28 @@ one the public sources describe, or the difference lies in a build option
 that has not been found yet.  Both are worth another look before the
 readings are closed as "not matchable".
 
+### How much of the game that covers
+
+The target's 7,214 functions whose prologue and epilogue can both be
+identified break down like this:
+
+| Prologue | Epilogue | Functions |
+|---|---|---|
+| `r0` | `r0` | 1,465 (20 %) |
+| `r0` | another | 1,652 |
+| another | `r0` | 2,188 |
+| another | another | 1,909 |
+
+So one function in five is written the way the rebuilt compiler writes it,
+and those are the ones the body gate can be run on.  The other four in
+five differ from the compiler built here in *which register* the link
+register is kept in — in the prologue, in the epilogue, or in both.
+
+That is a statement about the toolchain, not about the project: the source
+form, the flags, the linking model and the compiler's identity are all
+confirmed (the same source reproduces forty-four bytes in three games),
+and what is missing is a compiler that reproduces this one choice.
+
 ## The frame
 
 | Layout | Value |
