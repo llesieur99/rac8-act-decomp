@@ -18,11 +18,11 @@
     }
   },
   "flags": {
-    "status": "provisional: qualified on one function only",
-    "tested": ["-O1 -mno-save-restore-tocbase"],
+    "status": "per link unit, not global: two different sets reproduce the target",
+    "tested": ["-O1 -mno-save-restore-tocbase", "-O2 -mno-save-restore-tocbase"],
     "notes": [
       "-mno-save-restore-tocbase is what removes the TOC base from the frame; without it the compiler keeps a back chain the retail code does not have.",
-      "-O1 is what reproduces the retail epilogue exactly; at -O2 the order of the mtlr and the stack restore differs."
+      "the optimisation level is a property of the file, not of the build: the function at 0x10200 is reproduced at -O1 (or at -O2 with the second scheduler off), while the functions at 0x6FA4F8, 0x6FA6D0 and 0x6E1C78 need -O2 with the second scheduler on.  No single set of options reproduces all four, so the flags belong to the hypothesis about the source, not to the project."
     ]
   },
   "matches": [
@@ -39,6 +39,33 @@
         {"game": "Jak 2", "sdk": "SDK360", "callees": ["0x105A8", "0x67AE8"], "result": "44 of 44 bytes"},
         {"game": "Jak and Daxter: The Precursor", "sdk": "SDK360", "callees": ["0x105A8", "0x59BB8"], "result": "44 of 44 bytes"}
       ]
+    },
+    {
+      "function": "module_link_6FA4F8",
+      "source": "src/text/module_link_6fa4f8.c",
+      "address": "0x6FA4F8",
+      "extent": "0x6FA4F8 .. 0x6FA53F",
+      "bytes": 72,
+      "flags": ["-O2", "-mno-save-restore-tocbase"],
+      "callees": ["0x702DC8", "0x714790"]
+    },
+    {
+      "function": "module_link_6FA6D0",
+      "source": "src/text/module_link_6fa6d0.c",
+      "address": "0x6FA6D0",
+      "extent": "0x6FA6D0 .. 0x6FA717",
+      "bytes": 72,
+      "flags": ["-O2", "-mno-save-restore-tocbase"],
+      "callees": ["0x702DC8", "0x714790"]
+    },
+    {
+      "function": "float_to_short_6E1C78",
+      "source": "src/text/float_to_short_6e1c78.c",
+      "address": "0x6E1C78",
+      "extent": "0x6E1C78 .. 0x6E1CC7",
+      "bytes": 80,
+      "flags": ["-O2", "-mno-save-restore-tocbase"],
+      "callees": ["0x903748"]
     }
   ],
   "body_gate": "open for the functions listed above; closed for everything else"

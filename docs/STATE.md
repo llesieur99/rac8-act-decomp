@@ -15,8 +15,9 @@
 | the third method (a disassembler's analysis) | **done**: 105 of its 106 functions are call targets of the published scan |
 | the compiler | **identified and built**: SCEI PPC GCC 4.1.1 (SDK270), compiled from its own sources ([COMPILER.md](COMPILER.md)) |
 | the first byte-exact body | **done**: `module_init` at 0x10200, 44 bytes reproduced ([src/text/module_init.c](../src/text/module_init.c)) |
+| three more byte-exact bodies | **done**: 0x6FA4F8, 0x6FA6D0 (72 bytes each) and 0x6E1C78 (80 bytes) |
 | the other readings | in progress: three functions are a few bytes away |
-| a qualified PPU compiler and its options | **provisional**: `-O1 -mno-save-restore-tocbase` reproduces one function |
+| a qualified PPU compiler and its options | **per link unit**: `-O1` reproduces the first function, `-O2` the three others; the options belong to the source hypothesis |
 | the same engine in other games | **done**: the matched function is in Jak 2, Jak 3 and Jak and Daxter, at the same address ([CROSS-GAME.md](CROSS-GAME.md)) |
 | a second SDK's toolchain | **done**: SDK 3.6.0 built from its own sources; the same source matches 44 of 44 bytes in Jak 3 and in Jak 2 |
 
@@ -49,18 +50,29 @@ No percentage is published for that reason.
 
 ## The measurements
 
-With the SDK's compiler and the flags `-O1 -mno-save-restore-tocbase`:
+With the SDK's compiler and `-mno-save-restore-tocbase`:
 
-| Function | Address | Result |
-|---|---|---|
-| `module_init` | `0x10200` | **match**, 44 bytes |
-| `construct_local_buffer` | `0x25D98` | matches up to the fifth byte; the frame and the layout agree |
-| `call_with_49_and_1` | `0x10854` | matches up to the third byte; the retail frame is 0x10 larger |
-| `read_global_and_call` | `0x3B704` | matches up to the first byte |
-| the block at `0x21B5C8` | — | turned out **not to be a function**: no prologue, no caller, and it ends another function |
+| Function | Address | Bytes | Flags | Result |
+|---|---|---|---|---|
+| `module_init` | `0x10200` | 44 | `-O1` | **match** |
+| `module_link_6FA4F8` | `0x6FA4F8` | 72 | `-O2` | **match** |
+| `module_link_6FA6D0` | `0x6FA6D0` | 72 | `-O2` | **match** |
+| `float_to_short_6E1C78` | `0x6E1C78` | 80 | `-O2` | **match** |
+| `construct_local_buffer` | `0x25D98` | — | `-O1` | matches up to the fifth byte; the frame and the layout agree |
+| `call_with_49_and_1` | `0x10854` | — | `-O1` | matches up to the third byte; the retail frame is 0x10 larger |
+| `read_global_and_call` | `0x3B704` | — | `-O1` | matches up to the first byte |
+| the block at `0x21B5C8` | — | — | — | turned out **not to be a function**: no prologue, no caller, and it ends another function |
 
 The last line is the kind of result the catalogue is for: the address was a
 candidate, and the evidence says it is a block inside a bigger function.
+
+**No single set of options reproduces the four matches.**  The function at
+0x10200 is reproduced at `-O1` — or at `-O2` with the second scheduler
+turned off — while the three others need `-O2` with that scheduler on.
+The optimisation level is therefore a property of the *file* the function
+was compiled in, not of the build: the studio compiled its files with
+different levels, and the project's flags have to be recovered file by
+file, like the translation units.
 
 The three that do not match yet all fail the same way: the compiler keeps
 the link register in `r0` where the retail code keeps it in `r3`, `r4` or
