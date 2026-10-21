@@ -11,8 +11,8 @@
 | the SELF container is described | done |
 | the retail executable is decrypted and rebuilt into an ELF | done, in the contributor's local workspace |
 | the PPU ELF reader is published, with tests | done |
-| the first function catalogue | **done**: 8,271 addresses where two independent methods agree ([CATALOGUE.md](CATALOGUE.md)) |
-| the third method (a disassembler's analysis) | **done**: 105 of its 106 functions are call targets of the published scan |
+| the first function catalogue | **done**: 34,482 addresses confirmed by the executable's own module descriptor, each with the methods that found it ([CATALOGUE.md](CATALOGUE.md)) |
+| the third method (the flow, not the opening) | **done**: 100 % precise and 91.4 % recalled against the descriptor, where the two cheap methods reach 24 % |
 | the compiler | **identified and built**: SCEI PPC GCC 4.1.1 (SDK270), compiled from its own sources ([COMPILER.md](COMPILER.md)) |
 | the first byte-exact body | **done**: `module_init` at 0x10200, 44 bytes reproduced ([src/text/module_init.c](../src/text/module_init.c)) |
 | three more byte-exact bodies | **done**: 0x6FA4F8, 0x6FA6D0 (72 bytes each) and 0x6E1C78 (80 bytes) |
