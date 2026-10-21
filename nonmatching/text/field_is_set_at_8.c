@@ -9,6 +9,23 @@
  *             code, not a match, and it lives in nonmatching/ for that
  *             reason.
  *
+ * Measured
+ * --------
+ * Compiled with the SDK's compiler (PPC GCC 4.1.1, SDK270), the boolean
+ * test comes out as the *same sequence of instructions* as the retail
+ * code — the absolute-value-and-shift idiom, then the sign extension —
+ * but the registers differ: the retail code takes its two operands from
+ * r8 and r10, this source from r3 and r4.
+ *
+ *     difference at 0x21B5C8 (+0 bytes in)
+ *
+ * The reason is now known, and it is not the source: the retail code at
+ * 0x21B5C8 is **not a function**.  It has no prologue of its own, no
+ * caller names it, and it ends the function it belongs to; the two
+ * operands are the enclosing function's registers.  The address is in the
+ * catalogue as a block, not as a function, and this file is kept only as
+ * the record of what the block does.
+ *
  * What the code does
  * ------------------
  * The function reads a 32-bit word at a computed address and returns a

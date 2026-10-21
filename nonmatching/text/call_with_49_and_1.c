@@ -9,6 +9,22 @@
  *             code, not a match, and it lives in nonmatching/ for that
  *             reason.
  *
+ * Measured
+ * --------
+ * Compiled with the SDK's compiler (PPC GCC 4.1.1, SDK270) and compared
+ * with the retail bytes, the candidate agrees on the frame's *shape* and
+ * differs on its size: the retail frame is 0x80 bytes, this one is 0x70.
+ * The retail code also moves the link register through r4 rather than r0,
+ * and stores it after the first constant is loaded.
+ *
+ *     difference at 0x10857 (+3 bytes in)
+ *
+ * The extra 0x10 of frame is what the compiler reserves for arguments it
+ * has to keep, and nothing tried so far reproduces it: a callee with more
+ * arguments, a function with more parameters, and a local variable all
+ * leave the frame at 0x70.  The next attempt has to find what the retail
+ * function keeps on the stack.
+ *
  * What the code does
  * ------------------
  * The function forwards to another one with two constant arguments: 49

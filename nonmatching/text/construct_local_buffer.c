@@ -9,6 +9,18 @@
  *             code, not a match, and it lives in nonmatching/ for that
  *             reason.
  *
+ * Measured
+ * --------
+ * Compiled with the SDK's compiler (PPC GCC 4.1.1, SDK270) and compared
+ * with the retail bytes, the candidate matches up to the fifth byte: the
+ * frame size (0x90) and the layout agree, and the difference is the
+ * register the link register is moved through — the retail code uses r3
+ * where this source uses r0.  A function that *returns* the callee's
+ * value keeps r0 free, which is what the retail code does; the next
+ * attempt is the same source with a value returned.
+ *
+ *     difference at 0x25D9D (+5 bytes in)
+ *
  * What the code does
  * ------------------
  * The function sets up a stack frame, takes the address of a local

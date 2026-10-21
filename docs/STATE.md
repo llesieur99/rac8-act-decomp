@@ -45,6 +45,21 @@ projects: until a PPU compiler and its options are qualified, no
 byte-exact claim is possible, and the complete-program gate stays closed.
 No percentage is published for that reason.
 
+## The measurements
+
+With the SDK's compiler and the flags `-O1 -mno-save-restore-tocbase`:
+
+| Function | Address | Result |
+|---|---|---|
+| `module_init` | `0x10200` | **match**, 44 bytes |
+| `construct_local_buffer` | `0x25D98` | matches up to the fifth byte; the frame and the layout agree |
+| `call_with_49_and_1` | `0x10854` | matches up to the third byte; the retail frame is 0x10 larger |
+| `read_global_and_call` | `0x3B704` | matches up to the first byte |
+| the block at `0x21B5C8` | — | turned out **not to be a function**: no prologue, no caller, and it ends another function |
+
+The last line is the kind of result the catalogue is for: the address was a
+candidate, and the evidence says it is a block inside a bigger function.
+
 ## The next step
 
 1. Close the three other readings: each is a few bytes away, and the
