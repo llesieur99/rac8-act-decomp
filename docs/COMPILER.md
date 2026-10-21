@@ -262,6 +262,19 @@ sources do not carry.
 **The option is therefore what the project uses, and the faithful patch is
 the explanation.**
 
+**And it was checked on a second game and a second compiler.**  *Tools of
+Destruction* was compiled by the PlayStation 4's compiler — the one with
+the `CELL 4.1.2.7` stamp — and the patch applies to its branch as well
+(with its context adjusted: `patches/ps3-lr-reg-1.9.0.diff` ✓).  On 208
+functions of that game whose source can be derived mechanically, the
+unpatched compiler reproduces **32** of them byte for byte — exactly the
+ones whose link register is in `r0` — and the patched one reproduces
+**188** ✓✓✓; on a random sample of 500, **492 of 500** prologues are byte
+identical where 126 were ✓✓✓.
+
+So the patch is not a coincidence on one executable: it is the difference
+between the two compilers, measured on two games and two toolchains ✓✓✓.
+
 **What it buys.**  14,520 of the target's 23,333 functions with a frame
 are blocked on that choice; the option reaches 11,541 of them with
 `r4`, `r5` and `r6` alone, and 12,310 with `r7`.  The faithful repair

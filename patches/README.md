@@ -102,6 +102,49 @@ declared in the upstream `rs6000.opt` instead, so that every line of the
 patches comes from code that is under the GNU General Public License.
 The patches quote no header, no library and no sample of the SDK.
 
+## `ps3-lr-reg-1.9.0.diff` — the same patch, for the 1.9.0 branch
+
+The PlayStation 4's compiler has the same four hard-coded registers in
+the same places, but its blocks around them carry `lto_info` calls, the
+condition of the epilogue's reload is written differently, and its option
+file ends differently — so the patch needs its context adjusted.  The
+variant is published next to this one, and applies cleanly.
+
+## The validation on a second game and a second compiler
+
+The patch was checked on *Tools of Destruction*, the other Insomniac game,
+whose code was compiled by the PlayStation 4's compiler — the one with the
+`CELL 4.1.2.7` stamp.  Both the negative and the positive control were
+run on 208 functions whose source can be derived mechanically:
+
+| | Functions byte-exact |
+|---|---|
+| the 1.9.0 compiler, unpatched | **32 of 208** (15 %) — exactly the functions whose link register is in `r0`, and none of the others |
+| the 1.9.0 compiler, patched | **188 of 208** (90 %) |
+
+and on a random sample of 500 functions of that game:
+
+| | Prologues byte-identical |
+|---|---|
+| unpatched | 126 of 500 (25 %) |
+| patched | **492 of 500 (98 %)** |
+
+The functions that the patch frees are exactly those whose link register
+is in `r4` or `r5`: they go from 5 matching bytes out of 36 to 36 out of
+36.
+
+On the twenty pairs of functions the two games share, the patched compiler
+reproduces **twenty out of twenty in each game**, where the unpatched one
+reproduces none in *A Crack in Time* and three in *Tools of Destruction*.
+
+Two facts came out of the exercise:
+
+* the retail aligns its functions on **four** bytes and not eight, so
+  `-falign-functions=4` belongs to any byte-for-byte comparison;
+* the 1.9.0 branch does not have the SDK 2.7.0's TOC options, so it
+  cannot produce the restoration of the TOC base — a difference between
+  the two SDKs' ABIs, not a difference of register.
+
 ## What the patches do not fix
 
 The order of the epilogue's `mtlr` and the stack restore is not fixed by
