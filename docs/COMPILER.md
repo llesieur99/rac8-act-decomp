@@ -240,6 +240,28 @@ Foundation's GPL notice, and nothing else; see
 [`patches/README.md`](../patches/README.md) for the licence and the
 details.
 
+**And the second patch explains it.**  Sony's backend emits the prologue
+and the epilogue *after* the register allocation, which is why the
+register cannot simply be a pseudo-register there.  The faithful patch
+moves the save into the function's RTL before the allocation, with two
+pseudo-registers, so that the allocator chooses — the way the retail's
+compiler does.  It reproduces the retail's bytes whenever the allocator
+agrees: given the register the retail chose, the two compilers emit the
+same bytes.
+
+It does not reproduce the retail's *choice*: on 2,674 measured functions
+the faithful mechanism lands on the retail's register in 23 cases (0.9 %),
+where the option reaches 100 %.  The reason is worth stating plainly: in
+this compiler the allocator picks `r0` whenever `r0` is free at the entry,
+while the retail's build picked `r4`, `r5`, `r6`, `r3` or `r7` **for the
+same source**.  That choice is a property of the compiler *build*, not of
+the function, and no patch of the SDK 2.7.0 sources can recover it —
+the difference lies in the build's register preferences, which the public
+sources do not carry.
+
+**The option is therefore what the project uses, and the faithful patch is
+the explanation.**
+
 **What it buys.**  14,520 of the target's 23,333 functions with a frame
 are blocked on that choice; the option reaches 11,541 of them with
 `r4`, `r5` and `r6` alone, and 12,310 with `r7`.  The faithful repair

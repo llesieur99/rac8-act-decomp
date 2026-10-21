@@ -1,0 +1,431 @@
+The faithful link register patch.
+
+The four files this patch touches - gcc/config/rs6000/rs6000.c,
+gcc/config/rs6000/rs6000.h, gcc/config/rs6000/rs6000-protos.h and
+gcc/function.c - are upstream GNU Compiler Collection, and each of them
+carries the Free Software Foundation's notice:
+
+    This file is part of GCC.  GCC is free software; you can redistribute
+    it and/or modify it under the terms of the GNU General Public License
+    as published by the Free Software Foundation; either version 2, or (at
+    your option) any later version.
+
+A modification of a GPL file is under the GPL, so this patch is published
+under the same terms, with the notices kept.  It touches no file that Sony
+added to GCC, and quotes no SDK header, library or sample.  See
+patches/README.md for what it does and what it buys.
+Link register: let the register allocator choose the register.
+
+The retail's compiler keeps the link register in a register that is dead on
+entry and dead on exit, and reuses it as soon as the link register has been
+stored to the stack: that is the signature of a value whose live range ends
+at the store, i.e. of a pseudo register the register allocator assigns.
+
+The reconstruction hardcodes r0 in the four places of rs6000.c that emit
+the save and the reload of the link register.  This patch expresses the
+save in the function's RTL, with a pseudo register, so that the register
+allocator chooses the hard register, exactly like the retail's compiler
+does; the prologue and the epilogue, which this backend emits after the
+allocation, then use the register the allocator gave to the pseudo.
+
+The files are the GCC sources, under the GPL; no game code is involved.
+
+--- a/gcc/config/rs6000/rs6000.c
++++ b/gcc/config/rs6000/rs6000.c
+@@ -15564,12 +15564,265 @@
+ #define TARGET_FIX_AND_CONTINUE 0
+ #endif
+ 
++/* The link register is saved in a pseudo register, so that the register
++   allocator chooses the hard register that holds it.  This is what the
++   retail's compiler does: the register it uses is dead on entry and dead
++   on exit, and it is reused as soon as the link register has been stored
++   to the stack, which is the signature of a value whose live range ends
++   at the store.
++
++   The prologue and the epilogue of this backend are emitted after the
++   register allocation, so the save cannot be emitted there; it is
++   expressed in the function's RTL instead, with a pseudo register, and
++   the epilogue reloads the same slot.  These variables describe the
++   pseudo registers and the frame slot used for the current function.  */
++
++static rtx rs6000_lr_save_pseudo;	/* the pseudo holding the link reg.  */
++static rtx rs6000_lr_restore_pseudo;	/* the pseudo reloading it.  */
++static rtx rs6000_lr_chain_head;	/* the head of the function's RTL.  */
++static HOST_WIDE_INT rs6000_lr_slot_offset;	/* the slot, from the SP.  */
++static int rs6000_lr_in_rtl_p;		/* the save is in the function's RTL.  */
++static int rs6000_lr_save_reg = -1;	/* the register for the save.  */
++static int rs6000_lr_restore_reg = -1;	/* the register for the reload.  */
++static int rs6000_lr_save_done_p;	/* the RTL instructions are gone.  */
++static int rs6000_lr_restore_done_p;	/* the RTL instructions are gone.  */
++
++/* The hard register the allocator gave to the pseudo register that holds
++   the link register, and the instruction that sets it.  The instruction is
++   found by scanning the function: it is the one that sets a register from
++   the link register.  */
++
++static rtx
++rs6000_lr_find_save (int *reg)
++{
++  rtx insn;
++
++  for (insn = rs6000_lr_chain_head; insn; insn = NEXT_INSN (insn))
++    if (INSN_P (insn))
++      {
++	rtx pat = PATTERN (insn);
++
++	if (GET_CODE (pat) == SET
++	    && REG_P (SET_DEST (pat))
++	    && GET_CODE (SET_SRC (pat)) == REG
++	    && REGNO (SET_SRC (pat)) == LINK_REGISTER_REGNUM)
++	  {
++	    *reg = REGNO (SET_DEST (pat));
++	    return insn;
++	  }
++      }
++  return NULL_RTX;
++}
++
++/* The hard register the allocator gave to the pseudo register that
++   reloads the link register, and the instruction that sets it.  The
++   instruction is the one that sets a register from the slot.  */
++
++static rtx
++rs6000_lr_find_restore (int *reg)
++{
++  rtx insn;
++
++  for (insn = rs6000_lr_chain_head; insn; insn = NEXT_INSN (insn))
++    if (INSN_P (insn))
++      {
++	rtx pat = PATTERN (insn);
++
++	if (GET_CODE (pat) != SET || ! REG_P (SET_DEST (pat)))
++	  continue;
++	if (! MEM_P (SET_SRC (pat)))
++	  continue;
++	if (GET_CODE (XEXP (SET_SRC (pat), 0)) != PLUS
++	    || GET_CODE (XEXP (XEXP (SET_SRC (pat), 0), 0)) != REG
++	    || REGNO (XEXP (XEXP (SET_SRC (pat), 0), 0))
++	       != STACK_POINTER_REGNUM
++	    || GET_CODE (XEXP (XEXP (SET_SRC (pat), 0), 1)) != CONST_INT
++	    || INTVAL (XEXP (XEXP (SET_SRC (pat), 0), 1))
++	       != rs6000_lr_slot_offset)
++	  continue;
++	*reg = REGNO (SET_DEST (pat));
++	return insn;
++      }
++  return NULL_RTX;
++}
++
++/* Remove the RTL instructions that were only there to make the register
++   allocator choose the register for the link register: the prologue and
++   the epilogue emit the instructions themselves, with the register the
++   allocator chose.
++
++   The instructions are found by scanning the function: the pseudo
++   registers have been allocated by then, and the instructions have been
++   split, so the pointers we kept are not valid any more.  */
++
++static void
++rs6000_lr_remove_rtl_insns (int save_p)
++{
++  rtx insn, found, store = NULL_RTX;
++  int reg = 0;
++
++  if (save_p)
++    found = rs6000_lr_find_save (&reg);
++  else
++    found = rs6000_lr_find_restore (&reg);
++  if (! found)
++    return;
++
++  /* The matching store: the register is written to the slot.  */
++  if (save_p)
++    for (insn = rs6000_lr_chain_head; insn; insn = NEXT_INSN (insn))
++      if (INSN_P (insn))
++	{
++	  rtx pat = PATTERN (insn);
++
++	  if (GET_CODE (pat) != SET || ! MEM_P (SET_DEST (pat)))
++	    continue;
++	  if (GET_CODE (SET_SRC (pat)) != REG
++	      || REGNO (SET_SRC (pat)) != reg)
++	    continue;
++	  if (GET_CODE (XEXP (SET_DEST (pat), 0)) != PLUS
++	      || GET_CODE (XEXP (XEXP (SET_DEST (pat), 0), 0)) != REG
++	      || REGNO (XEXP (XEXP (SET_DEST (pat), 0), 0))
++		 != STACK_POINTER_REGNUM
++	      || GET_CODE (XEXP (XEXP (SET_DEST (pat), 0), 1)) != CONST_INT
++	      || INTVAL (XEXP (XEXP (SET_DEST (pat), 0), 1))
++		 != rs6000_lr_slot_offset)
++	    continue;
++	  store = insn;
++	  break;
++	}
++
++  delete_insn (found);
++  if (store)
++    delete_insn (store);
++
++  /* The use that kept the reload alive.  */
++  if (! save_p)
++    {
++      insn = NEXT_INSN (found);
++      if (insn && INSN_P (insn) && GET_CODE (PATTERN (insn)) == USE)
++	delete_insn (insn);
++    }
++}
++
++/* Set up the save of the link register in the function's RTL.  This is
++   called at the end of the expansion of the function, before the register
++   allocation, so that the allocator can choose the register.
++
++   The link register is saved with a pseudo register, whose live range
++   ends at the store to the stack; the register is therefore free again
++   right after the save, exactly as in the retail's code.  The epilogue
++   reloads the saved value with a second pseudo register, and restores
++   the link register from it.
++
++   The prologue and the epilogue of this backend are emitted after the
++   register allocation, so they cannot use a pseudo; they use the hard
++   register the allocator gave to the pseudo, and remove the RTL
++   instructions that were only there to make the allocator choose it.  */
++
++void
++rs6000_lr_save_setup (void)
++{
++  rs6000_stack_t *info;
++  rtx lr, slot, seq;
++  int lr_live;
++
++  /* A leaf function that neither allocates nor is profiled does not save
++     the link register; testing that first keeps rs6000_stack_info () (and
++     its side effects on the register liveness) out of the way of the
++     functions that do not need the mechanism.  */
++  if (current_function_is_leaf && ! cfun->machine->ra_needs_full_frame
++      && ! current_function_calls_alloca && ! current_function_profile)
++    {
++      rs6000_lr_in_rtl_p = 0;
++      return;
++    }
++
++  rs6000_lr_in_rtl_p = 0;
++  rs6000_lr_save_done_p = 0;
++  rs6000_lr_restore_done_p = 0;
++  rs6000_lr_save_reg = -1;
++  rs6000_lr_restore_reg = -1;
++  rs6000_lr_save_pseudo = NULL_RTX;
++  rs6000_lr_restore_pseudo = NULL_RTX;
++  rs6000_lr_chain_head = get_insns ();
++
++  /* rs6000_stack_info () marks the link register as live when it has to be
++     saved; that is the backend's business, and doing it here would change
++     the code of the functions that do not save it.  */
++  lr_live = regs_ever_live[LINK_REGISTER_REGNUM];
++  info = rs6000_stack_info ();
++  regs_ever_live[LINK_REGISTER_REGNUM] = lr_live;
++
++  if (! info->lr_save_p || ! info->lr_save_inline_p)
++    return;
++  if (WORLD_SAVE_P (info) || ! info->push_p)
++    return;
++
++  /* The address of the slot is relative to the stack pointer of the
++     function's body; that is only the case when the stack is allocated
++     before the link register is saved.  */
++  if (! (DEFAULT_ABI == ABI_V4
++	 /* CELL LOCAL Begin */
++	 || (rs6000_testabi
++	     && rs6000_cpu == PROCESSOR_CELLPPU
++	     && DEFAULT_ABI == ABI_AIX)
++	 /* CELL LOCAL End */))
++    return;
++  if (info->total_size >= 32767 - info->lr_save_offset)
++    return;
++
++  rs6000_lr_slot_offset = info->lr_save_offset + info->total_size;
++  slot = gen_rtx_MEM (Pmode, plus_constant (stack_pointer_rtx,
++					    rs6000_lr_slot_offset));
++
++  /* Save the link register in a pseudo register.  */
++  lr = gen_reg_rtx (Pmode);
++  rs6000_lr_save_pseudo = lr;
++
++  start_sequence ();
++  emit_move_insn (lr, gen_rtx_REG (Pmode, LINK_REGISTER_REGNUM));
++  emit_move_insn (slot, lr);
++  seq = get_insns ();
++  end_sequence ();
++  emit_insn_after (seq, entry_of_function ());
++
++  /* Reload it at the return of the function.  The use of the pseudo
++     register keeps the reload alive: the link register is not live in the
++     RTL, so the instructions that set it would be deleted.  */
++  lr = gen_reg_rtx (Pmode);
++  rs6000_lr_restore_pseudo = lr;
++
++  start_sequence ();
++  emit_move_insn (lr, slot);
++  emit_insn (gen_rtx_USE (VOIDmode, lr));
++  seq = get_insns ();
++  end_sequence ();
++  emit_insn (seq);
++
++  rs6000_lr_in_rtl_p = 1;
++}
++
+ /* Emit function prologue as insns.  */
+ 
+ void
+ rs6000_emit_prologue (void)
+ {
+   rs6000_stack_t *info = rs6000_stack_info ();
++
++  /* The instructions that made the allocator choose the register are
++     replaced by the ones emitted here.  */
++  if (rs6000_lr_in_rtl_p && ! rs6000_lr_save_done_p)
++    {
++      int reg;
++
++      if (rs6000_lr_find_save (&reg))
++	{
++	  rs6000_lr_save_reg = reg;
++	  rs6000_lr_save_done_p = 1;
++	  rs6000_lr_remove_rtl_insns (1);
++	}
++    }
+   enum machine_mode reg_mode = Pmode;
+   int reg_size = TARGET_32BIT ? 4 : 8;
+   rtx sp_reg_rtx = gen_rtx_REG (Pmode, STACK_POINTER_REGNUM);
+@@ -15826,10 +16079,15 @@
+       insn = emit_insn (generate_set_vrsave (reg, info, 0));
+     }
+ 
+-  /* If we use the link register, get it into r0.  */
++  /* If we use the link register, get it into the register the allocator
++     chose for it (see rs6000_lr_save_setup).  */
+   if (!WORLD_SAVE_P (info) && info->lr_save_p)
+     {
+-      insn = emit_move_insn (gen_rtx_REG (Pmode, 0),
++      int reg = rs6000_lr_save_reg;
++
++      if (reg < 0)
++	reg = 0;
++      insn = emit_move_insn (gen_rtx_REG (Pmode, reg),
+ 			     gen_rtx_REG (Pmode, LINK_REGISTER_REGNUM));
+       RTX_FRAME_RELATED_P (insn) = 1;
+     }
+@@ -16090,12 +16348,16 @@
+       int offset = info->lr_save_offset + sp_offset;
+       rtx addr = gen_rtx_PLUS (Pmode, frame_reg_rtx,
+ 			       GEN_INT (offset));
+-      rtx reg = gen_rtx_REG (Pmode, 0);
+-      rtx mem = gen_rtx_MEM (Pmode, addr);
++      int reg = rs6000_lr_save_reg;
++      rtx mem;
++
++      if (reg < 0)
++	reg = 0;
++      mem = gen_rtx_MEM (Pmode, addr);
+       /* This should not be of rs6000_sr_alias_set, because of
+ 	 __builtin_return_address.  */
+ 
+-      insn = emit_move_insn (mem, reg);
++      insn = emit_move_insn (mem, gen_rtx_REG (Pmode, reg));
+       rs6000_frame_related (insn, frame_ptr_rtx, info->total_size,
+ 			    NULL_RTX, NULL_RTX);
+     }
+@@ -16346,6 +16608,20 @@
+   int reg_size = TARGET_32BIT ? 4 : 8;
+   int i;
+ 
++  /* The instructions that made the allocator choose the register are
++     replaced by the ones emitted here.  */
++  if (rs6000_lr_in_rtl_p && ! rs6000_lr_restore_done_p)
++    {
++      int reg;
++
++      if (rs6000_lr_find_restore (&reg))
++	{
++	  rs6000_lr_restore_reg = reg;
++	  rs6000_lr_restore_done_p = 1;
++	  rs6000_lr_remove_rtl_insns (0);
++	}
++    }
++
+   info = rs6000_stack_info ();
+ 
+   if (TARGET_SPE_ABI && info->spe_64bit_regs_used != 0)
+@@ -16586,10 +16862,13 @@
+     {
+       int offset = info->lr_save_offset + sp_offset;
+       rtx mem = gen_frame_mem_offset (Pmode, frame_reg_rtx, offset);
+-
++      int reg = rs6000_lr_restore_reg;
++
++      if (reg < 0)
++	reg = 0;
+       set_mem_alias_set (mem, rs6000_sr_alias_set);
+ 
+-      emit_move_insn (gen_rtx_REG (Pmode, 0), mem);
++      emit_move_insn (gen_rtx_REG (Pmode, reg), mem);
+     }
+ 
+   /* Get the old cr if we saved it.  */
+@@ -16607,8 +16886,12 @@
+   /* Set LR here to try to overlap restores below.  */
+   if (info->lr_save_p && (info->lr_save_inline_p || sibcall))
+     {
++      int reg = rs6000_lr_restore_reg;
++
++      if (reg < 0)
++	reg = 0;
+       emit_move_insn (gen_rtx_REG (Pmode, LINK_REGISTER_REGNUM),
+-		      gen_rtx_REG (Pmode, 0));
++		      gen_rtx_REG (Pmode, reg));
+     }
+ 
+   /* Load exception handler data registers, if needed.  */
+--- a/gcc/config/rs6000/rs6000.h
++++ b/gcc/config/rs6000/rs6000.h
+@@ -2324,6 +2324,13 @@
+ 
+ #define INCOMING_RETURN_ADDR_RTX   gen_rtx_REG (Pmode, LINK_REGISTER_REGNUM)
+ #define DWARF_FRAME_RETURN_COLUMN  DWARF_FRAME_REGNUM (LINK_REGISTER_REGNUM)
++
++/* The link register is saved in the function's RTL, with a pseudo
++   register, so that the register allocator chooses the register that
++   holds it; the retail's compiler does the same.  The hook is called at
++   the end of the expansion of the function, before the allocation.  */
++
++#define TARGET_LR_SAVE_SETUP       rs6000_lr_save_setup
+ 
+ /* Describe how we implement __builtin_eh_return.  */
+ #define EH_RETURN_DATA_REGNO(N) ((N) < 4 ? (N) + 3 : INVALID_REGNUM)
+--- a/gcc/config/rs6000/rs6000-protos.h
++++ b/gcc/config/rs6000/rs6000-protos.h
+@@ -154,6 +154,7 @@
+ extern int get_TOC_alias_set (void);
+ extern void rs6000_emit_prologue (void);
+ extern void rs6000_lr_save_setup (void);
++extern void rs6000_lr_save_setup (void);
+ extern void rs6000_emit_load_toc_table (int);
+ extern void rs6000_aix_emit_builtin_unwind_init (void);
+ extern unsigned int rs6000_dbx_register_number (unsigned int);
+--- a/gcc/function.c
++++ b/gcc/function.c
+@@ -4487,6 +4487,13 @@
+   /* Output the label for the actual return from the function.  */
+   emit_label (return_label);
+ 
++#ifdef TARGET_LR_SAVE_SETUP
++  /* Let the target express the save of the link register in the
++     function's RTL, so that the register allocator chooses the register
++     that holds it, the way the retail's compiler does.  */
++  TARGET_LR_SAVE_SETUP ();
++#endif
++
+   if (USING_SJLJ_EXCEPTIONS)
+     {
+       /* Let except.c know where it should emit the call to unregister
