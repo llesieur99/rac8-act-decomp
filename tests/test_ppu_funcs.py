@@ -23,19 +23,21 @@ def shdr(name_off, sh_type, flags, addr, offset, size):
             + struct.pack(">QQ", 1, 0))
 
 
-def build_elf():
+def build_elf(words=None):
     """An ELF with one executable segment holding a few instructions."""
-    code = b"".join(struct.pack(">I", w) for w in (
-        0x38600000,      # li r3, 0
-        STDU,            # stdu r1, -0x70(r1)
-        MFLR,            # mflr r0
-        0x4E800020,      # blr
-        0x60000000,      # nop
-        MFLR,            # mflr r0
-        STDU,            # stdu r1, -0x60(r1)
-        BL,              # bl +0x20
-        0x60000000,      # nop
-    ))
+    if words is None:
+        words = [
+            0x38600000,      # li r3, 0
+            STDU,            # stdu r1, -0x70(r1)
+            MFLR,            # mflr r0
+            0x4E800020,      # blr
+            0x60000000,      # nop
+            MFLR,            # mflr r0
+            STDU,            # stdu r1, -0x60(r1)
+            BL,              # bl +0x20
+            0x60000000,      # nop
+        ]
+    code = b"".join(struct.pack(">I", w) for w in words)
     off = 0x200
     out = bytearray(0x400)
     out[0:16] = b"\x7fELF\x02\x02\x01\x66" + b"\x00" * 8
@@ -64,6 +66,12 @@ class PpuFuncsTest(unittest.TestCase):
     def test_call_targets(self):
         addresses = [c.address for c in ppu_funcs.call_targets(self.elf)]
         self.assertEqual(addresses, [0x1003C])
+
+    def test_an_absolute_branch_is_not_a_call(self):
+        # ``bla 0x20000``: the target is an address, not a displacement, so
+        # it names no function the caller calls.
+        elf = ppu_elf.PpuElf(build_elf([0x48000003, 0x4E800020]), "absolute")
+        self.assertEqual([c.address for c in ppu_funcs.call_targets(elf)], [])
 
     def test_catalogue_merges_both(self):
         rows = ppu_funcs.build_catalogue(self.elf)

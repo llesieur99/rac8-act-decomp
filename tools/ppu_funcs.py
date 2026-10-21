@@ -50,6 +50,9 @@ MFLR_VALUE = 0x7C0800A6
 # (opcode 18, LK at bit 0; AA at bit 1).
 BRANCH_MASK = 0xFC000001
 BRANCH_LINK = 0x48000001
+# The absolute form of the branch: its target is an address, not a
+# displacement, so it names no function the caller calls.
+BRANCH_ABSOLUTE = 0x00000002
 
 
 @dataclass(frozen=True)
@@ -109,11 +112,20 @@ def prologue_candidates(elf: PpuElf) -> list[Candidate]:
 
 
 def call_targets(elf: PpuElf) -> list[Candidate]:
-    """The addresses the program calls."""
+    """The addresses the program calls.
+
+    Only the relative branch-and-link is a call: the absolute one (``bla``)
+    has no displacement relative to the program counter, and its address is
+    not a function the caller names, so counting it would add addresses
+    that are not functions at all.
+    """
     seen = set()
     out = []
     for address, word in _words(elf):
         if word & BRANCH_MASK != BRANCH_LINK:
+            continue
+        if word & BRANCH_ABSOLUTE:
+            # ``bla``: the target is an absolute address, not a call site.
             continue
         displacement = word & 0x03FFFFFC
         if displacement & 0x02000000:

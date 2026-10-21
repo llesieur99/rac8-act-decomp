@@ -65,6 +65,49 @@ The dynamic string table names the modules the executable links against:
 `liblv2_stub` and others. It is the only piece of link information the
 retail build keeps.
 
+## What the inventory found
+
+A full inventory of the file — sections, segments, strings, import
+mechanism — was made on the target and is kept in the contributor's
+workspace. Four of its results change the way the file should be read.
+
+**The segment at `0x10000` is not only code.**  It holds the code, the
+read-only data and the initialised data in one block:
+
+| Range | Size | Content |
+|---|---|---|
+| `0x10200` – `0xA49DE4` | 10.7 MB | the game's code |
+| `0xA49DE4` – `0xAD7D00` | 581 KB | read-only data (strings, tables) |
+| `0xAD7D00` – `0xC09560` | 1.2 MB | initialised data |
+
+There is no cold zone inside the code: every 64 KB of it holds between 0
+and 821 function prologues.  What looked like a table inside the text is
+valid code (matrix initialisers, leaf functions without a frame).  The
+discriminant between code and data is the **number of prologues**, not
+the density of calls: the read-only data holds no prologue at all and up
+to 3 618 branches per 64 KB.
+
+**`e_entry` does not point at code.**  `0xCA6B58` is the address of a
+table of **68 483 pairs** — a function address and the constant
+`0xD34770` — kept in the data segment.  The real start of the program is
+the module's initialisation function at `0x10200`.
+
+**The link information is richer than the stripped file suggests.**  The
+executable links **22 PRX modules** (the studio's own translation units)
+with the version prefix `p270001`: `libm`, `libgcm_cmd`,
+`libsysutil_stub`, `libhttp_stub`, `libspurs_stub`, `libssl_stub`,
+`libpthread`, `crt1`, `liblv` and others; `EBOOT.BIN` carries the
+`libc` and `libstdc++` counterpart.  The import mechanism is fully mapped
+— 18 SCE module names in the clear, 18 descriptors, 245 `mtctr`/`bctr`
+thunks — but the *names of the imported symbols* are compressed in a
+245-entry table and cannot be recovered.
+
+**Three SPU programs are embedded in the data.**  They are complete ELF
+files with their section names intact: `edgezlib_inflate_task.spu.elf`
+(the game's own SPU module), and the SDK's `nextsy` and `lr1_ww`.  The
+107 compiler stamps the file carries are spread over the three images,
+one group each.
+
 ## What this means for the decompilation
 
 Without symbols, a function's name has to be *earned*: it comes from the
