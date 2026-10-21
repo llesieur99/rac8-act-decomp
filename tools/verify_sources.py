@@ -116,12 +116,17 @@ def main(argv: list[str] | None = None) -> int:
                         help="the container the SDK compiler runs in")
     parser.add_argument("--sources", default=os.path.join(REPO, "src", "text"),
                         help="the directory of the sources")
+    parser.add_argument("--sample", type=int, default=0,
+                        help="check only that many sources, spread over the set")
     args = parser.parse_args(argv)
 
     paths = sources(args.sources)
     if not paths:
         print("no source found", file=sys.stderr)
         return 1
+    if args.sample and args.sample < len(paths):
+        step = len(paths) // args.sample
+        paths = paths[::step][:args.sample]
     matched = 0
     skipped = 0
     for path in paths:

@@ -15,9 +15,8 @@
 | the third method (the flow, not the opening) | **done**: 100 % precise and 91.4 % recalled against the descriptor, where the two cheap methods reach 24 % |
 | the compiler | **identified and built**: SCEI PPC GCC 4.1.1 (SDK270), compiled from its own sources ([COMPILER.md](COMPILER.md)) |
 | the first byte-exact body | **done**: `module_init` at 0x10200, 44 bytes reproduced ([src/text/module_init.c](../src/text/module_init.c)) |
-| twenty-five more byte-exact bodies | **done**: the one-line wrappers of the linked modules, 36 to 40 bytes each ([src/text/](../src/text/)) |
-| two of the three blocked readings | **done**: 0x25D98 and 0x10854 — the second one is a C++ method |
-| the other readings | in progress: 0x3B704 needs the TOC and a frame the harness cannot yet build |
+| two thousand and five more byte-exact bodies | **done**: a campaign over the whole catalogue — **2,512 functions** byte for byte ([src/text/](../src/text/)) |
+| the other readings | in progress: 16,010 functions are still blocked by the compiler, not by the source |
 | a qualified PPU compiler and its options | **per link unit**: `-O1`, `-O2`, `-O2 -mminimal-toc` and `-fschedule-insns2` all appear; the options belong to the source hypothesis |
 | the same engine in other games | **done**: the matched function is in Jak 2, Jak 3 and Jak and Daxter, at the same address ([CROSS-GAME.md](CROSS-GAME.md)) |
 | a second SDK's toolchain | **done**: SDK 3.6.0 built from its own sources; the same source matches 44 of 44 bytes in Jak 3 and in Jak 2 |
@@ -65,7 +64,16 @@ With the SDK's compiler and `-mno-save-restore-tocbase`:
 | `Object::call_with_49_and_1` | `0x10854` | 44 | `-O1 -mminimal-toc -fschedule-insns2` | **match** (C++) |
 | `read_global_and_call` | `0x3B704` | 56 | `-O2 -mminimal-toc` | **match** |
 | 25 wrappers of the linked modules | `0x719CA0` … | 36–40 | `-O2` | **match** (25) |
+| 2,482 more, from a campaign over the catalogue | — | 8–96 | several | **match** (2,482) |
 | the block at `0x21B5C8` | — | — | — | turned out **not to be a function**: no prologue, no caller, and it ends another function |
+
+The options that produce the matches are known, and they are not
+interchangeable: the retail aligns its functions on **four** bytes and not
+eight, so `-falign-functions=4` belongs to every comparison; `-mno-toc`
+leaves a function without a frame and turns a tail call into a branch;
+`-mminimal-toc` decides between a `clrldi` and a `rldicl`; and the
+register that holds the link register is deduced from the retail's own
+bytes rather than guessed.
 
 The last line is the kind of result the catalogue is for: the address was a
 candidate, and the evidence says it is a block inside a bigger function.
