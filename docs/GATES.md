@@ -51,3 +51,20 @@ The gates are not a reason to stop. They are the order of the work:
 
 A claim that does not pass a gate is written down as what it is: an
 attempt, a measurement, a hypothesis.
+
+## Re-opening a source
+
+Every source carries the condition that re-opens it: if the toolchain or
+the options ever change, the comparison has to be run again before the
+body is counted.  `tools/verify_sources.py` makes that condition
+executable — it reads the address, the options and the callees each
+source declares, compiles it, links it at its retail address and compares
+the bytes:
+
+```sh
+python tools/verify_sources.py --elf work/eboot/EBOOT.elf \
+    --toolchain /path/to/the/toolchain --image ps3gcc-toolchain
+```
+
+It needs the SDK's compiler, which the repository never ships (see
+[LEGAL.md](../LEGAL.md)).
