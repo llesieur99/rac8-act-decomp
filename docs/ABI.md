@@ -42,6 +42,14 @@ In the retail executable, 2,575 of the 2,580 catalogue functions open with
 no `nop` after their prologue, four with one, and a single one with two.
 The two are a property of that one function's source, not of the build.
 
+The rule was confirmed by experiment: a candidate that puts the callee in
+the same translation unit loses the `nop` after the call to it, and a
+candidate that leaves it external keeps it.  The retail function at
+`0x10378` calls `0x102F0` with no `nop` and `0xA48E04` with no `nop`
+either, so **both callees are in the same translation unit as the caller** —
+while the function at `0x10200`, whose calls do carry a `nop`, calls
+functions the compiler could not see.
+
 **Consequence for the project:** the grouping of the functions into
 translation units is part of what has to be recovered.  A candidate that
 calls a function the compiler cannot see will not match, however good its
@@ -56,6 +64,13 @@ restores it afterwards, because the callee may have changed it.
 
 That is why some retail functions end with a `ld r2, 0x28(r1)` and others
 do not: it depends on whether the calls they make can change `r2`.
+
+The option `-mno-save-restore-tocbase` removes that restore as well as the
+prologue's save.  The retail executable has functions with the restore and
+functions without, so **the flags are not the same everywhere**: the file
+that holds the function at `0x10200` was built with the option, and the
+file that holds the function at `0x10378` was not.  Qualifying the build
+means qualifying it *file by file*.
 
 ## The frame
 
