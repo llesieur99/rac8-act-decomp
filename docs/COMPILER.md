@@ -29,6 +29,53 @@ The stamp is read with the published tool, so the answer is reproducible:
 python tools/compiler_stamp.py work/eboot/EBOOT.elf --libraries
 ```
 
+### Where the stamp comes from
+
+The stamp is not the game's doing: the *compiler* writes it. Sony's
+toolchain sources carry it in `gcc/gcc/version.c`:
+
+```c
+#define VERSUFFIX " (SDK270, $Rev: 3019 $)"   /* the SDK 2.7.0 toolchain */
+#define VERSUFFIX " (SDK250, $Rev: 2824 $)"   /* the SDK 2.5.0 toolchain */
+```
+
+So every object a toolchain compiles carries its own stamp, and the stamps
+found in an executable are a list of the toolchains that produced it. A
+stamp that appears **once** in an executable, and that also appears in
+other games, is a *prebuilt library* the SDK froze and reused.
+
+### The one odd object
+
+Comparing the stamps of other games makes the pattern clear. Each
+executable was read the same way (package → executable → SELF → stamps):
+
+| Game | Stamps |
+|---|---|
+| Ratchet & Clank: A Crack in Time (2009) | 106 × `SDK270 rev 3019`, 1 × `SDK250 rev 2824` |
+| Ratchet & Clank: Tools of Destruction (2011) | 24 × `CELL 4.1.2.7 rev 1826`, 8 × `CELL 4.1.2.7 rev 1830` |
+| Uncharted: Drake's Fortune (2007) | 24 × `CELL 4.1.2.7 rev 1826`, 8 × `CELL 4.1.2.7 rev 1830` |
+| LittleBigPlanet (2008) | 205 × `SDK310 rev 3320`, 9 × `CELL 4.1.2.7 rev 2184` |
+| Jak 3 | 6 × `SDK360 rev 3455` |
+| Assassin's Creed (2007) | 172 × `CELL 4.1.28 rev 1855`, 65 × `CELL rev 1826`, 60 × `CELL rev 1757`, 14 × `CELL rev 1830` |
+
+The `CELL 4.1.2.7` revisions (1757, 1826, 1830, 2184) show up in *several*
+titles with the *same* revision numbers: they are the SDK's prebuilt
+libraries, compiled once and linked into every game. Later SDKs changed the
+stamp's wording, from `SDK<version>` to `CELL <gcc version>, RTTI`.
+
+By that rule, the single `SDK250 rev 2824` object in *A Crack in Time* is
+**a prebuilt SDK library frozen at SDK 2.5.0** — the same kind of artefact
+as the runtime library, not the studio's code. It is out of the matching
+scope, exactly like a libc is out of the scope of a matching
+decompilation.
+
+That leaves a clean statement of the matching scope:
+
+* the game's own code: **106 objects, built with the SDK 2.7.0 toolchain**;
+* one prebuilt SDK library object: not the game's, not matched;
+* the rest of the executable: the SDK's runtime, the assets, and the
+  engine's data.
+
 ## What else the executable says
 
 The same strings name the libraries the game was linked against:
