@@ -188,6 +188,22 @@ and in Jak 2 — the same source, the same options, and the same bytes as in
 SDK revisions apart agreeing on forty-four bytes is what turns the flags
 from a guess into a measurement.
 
+### Where the rebuilt compiler is not the retail one
+
+The toolchains built here are not a perfect reproduction of the compilers
+that built the games.  One difference is measured and documented in
+[ABI.md](ABI.md): the rebuilt compiler always keeps the link register in
+`r0`, while two of the retail executables spread it over `r0`, `r4`, `r5`
+and `r6`.  The rebuilt compiler matches the retail behaviour of the other
+executables (Jak 2, Jak 3, LittleBigPlanet, Uncharted, Assassin's Creed:
+`r0` in 100 % of the functions ✓) and does not match the two Insomniac
+games that mix the registers.
+
+That difference is the reason three of the readings are a few bytes away:
+the bytes agree right up to the `mflr`, and the register is the first thing
+that differs.  It is a property of the compiler build, and it is still
+open.
+
 ### Route B — the open route
 
 The PPU is an open target, and there are open toolchains for it:

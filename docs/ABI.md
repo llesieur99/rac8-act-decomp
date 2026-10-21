@@ -72,6 +72,54 @@ that holds the function at `0x10200` was built with the option, and the
 file that holds the function at `0x10378` was not.  Qualifying the build
 means qualifying it *file by file*.
 
+## The link register's register
+
+The SDK's prologue moves the link register into a general register before
+it stores it (`mflr rX` / `std rX, offset(r1)`), and the epilogue always
+reads it back into `r0` (`ld r0, offset(r1)` / `mtlr r0`).  Which register
+the prologue uses is the register allocator's choice, and it is worth
+measuring, because it is where the rebuilt toolchain and the retail build
+disagree.
+
+Measured over every function of the catalogue of each executable:
+
+| Executable | Compiler | `r0` | `r4` | `r5` | `r6` | `r3` |
+|---|---|---|---|---|---|---|
+| A Crack in Time | SDK270 rev 3019 | 37 % | 25 % | 22 % | 6 % | 3 % |
+| Tools of Destruction | CELL 4.1.2.7 rev 1826 | 48 % | 28 % | 9 % | 5 % | — |
+| Jak 2 | SDK360 rev 3455 | **100 %** | — | — | — | — |
+| Jak 3 | SDK360 rev 3455 | **100 %** | — | — | — | — |
+| LittleBigPlanet | SDK310 rev 3320 | **100 %** | — | — | — | — |
+| Uncharted: Drake's Fortune | CELL 4.1.2.7 rev 1826 | **100 %** | — | — | — | — |
+| Assassin's Creed | CELL 4.1.28 rev 1855 | **100 %** | — | — | — | — |
+
+Two families appear.  In most executables the link register is **always**
+kept in `r0`.  In the two newest Insomniac games it is spread over `r0`,
+`r4`, `r5` and `r6` — and there the rule is visible: in every function that
+calls something, the register the link register is kept in is the one the
+first argument is passed in.
+
+The rebuilt toolchains do not reproduce the second family: both the SDK
+2.7.0 and the SDK 3.6.0 compiler built here keep the link register in `r0`
+in every case, in C and in C++, at every optimisation level, with and
+without `-mno-save-restore-tocbase`, and with the TOC options
+(`-mminimal-toc`, `-mno-toc`, `-mbase-toc`) turned on and off.
+
+That is the reason three of the readings are stuck (§ *The measurements* in
+[STATE.md](STATE.md)): the bytes agree with the retail ones right up to the
+`mflr`, and the register is the first thing that differs.  The
+compiler's identity, the flags and the linking model are all confirmed
+there (the same source reproduces forty-four bytes in three games); what is
+not reproduced is this register choice, and that is a property of the
+compiler build, not of the source.
+
+**What it means for the work:** the functions whose retail code keeps the
+link register in `r4` or `r5` cannot be matched byte for byte with the
+toolchain built here.  Either the compiler that built the game is not the
+one the public sources describe, or the difference lies in a build option
+that has not been found yet.  Both are worth another look before the
+readings are closed as "not matchable".
+
 ## The frame
 
 | Layout | Value |

@@ -64,10 +64,10 @@ candidate, and the evidence says it is a block inside a bigger function.
 
 The three that do not match yet all fail the same way: the compiler keeps
 the link register in `r0` where the retail code keeps it in `r3`, `r4` or
-`r5`.  The register is the allocator's choice, and the retail's choice
-follows the register the first argument uses — so the source form that is
-still missing is the one that makes the compiler reuse that register.
-What is measured across the whole executable:
+`r5`.  The register is the allocator's choice, and the choice is where the
+rebuilt toolchain and the retail build disagree — it is measured over
+every function of seven executables and written up in
+[ABI.md](ABI.md) (*The link register's register*):
 
 | Link register | Functions |
 |---|---|
@@ -76,6 +76,18 @@ What is measured across the whole executable:
 | `r5` | 4,900 (22 %) |
 | `r3` | 627 (3 %) |
 | the others | the rest |
+
+In five of the seven executables measured (Jak 2, Jak 3, LittleBigPlanet,
+Uncharted, Assassin's Creed) the link register is in `r0` in **100 %** of
+the functions — the behaviour of the compiler rebuilt here.  Only the two
+newest Insomniac games mix the registers, and in those the register is
+always the one the first argument is passed in.
+
+So the three readings are not blocked by the source form: they are blocked
+by a difference in the compiler's register allocation that has not been
+explained yet.  That is a better place to be stuck than it looks — the
+rest of the method (the compiler's identity, the flags, the linking model,
+the source form) is confirmed by three byte-exact matches in three games.
 
 ## What the measurements taught about the ABI
 
