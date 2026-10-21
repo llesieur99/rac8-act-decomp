@@ -102,6 +102,51 @@ So the restore is not a property of the calls a function makes: it is a
 property of the *function*, and a function that never names a global does
 not restore the TOC, whatever it calls.
 
+### How the globals are addressed, and how a candidate reproduces it
+
+The module keeps its TOC base in `r2`, and a global is a signed 16-bit
+displacement from it.  The geometry was measured:
+
+| | |
+|---|---|
+| the TOC base (`r2`) | `0x00D34770` |
+| the table of entries | `0x00D2C770` |
+| the window | 64 KiB, `0x00D2C770` … `0x00D3C76F` |
+
+The base sits **at the exact middle of the window**, which is the
+convention GNU ld applies by itself: the anchor of a `.toc` section
+defaults to `.toc + 0x8000`, and the displacement of an `R_PPC64_TOC16`
+relocation is the distance from the anchor to the entry.  The SDK's
+linker therefore computes the right displacement by itself, as soon as the
+global lands on the right entry.
+
+Two things had to be measured to make that work:
+
+* **the entries hold the values of the globals, not their addresses.**  The
+  retail code compares an entry with zero, and the entry at `0x00D34774`
+  holds `0x40000000`, which is 2.0f — a table of addresses would hold
+  neither.
+* **the SDK's compiler cannot produce the retail's single
+  `lwz rX, off(r2)`.**  Its model of the TOC is the address one, which
+  takes two instructions.  The harness therefore rewrites the
+  `R_PPC64_TOC16` relocations of the candidate so that every global
+  points at its retail entry, and rebuilds the `.toc` section so that it
+  really holds the entries at their retail addresses.
+
+`tools/ppu_toc.py` is that harness.  Measured on the target, **eleven of
+eleven** TOC accesses come out with the retail's displacement, and **six
+of eleven** real functions are reproduced byte for byte.  The five that
+are not are accounted for: the order of the floating-point operands, the
+choice of a register, and one structural case — GCC 4.1.1 does not fold a
+*negative* displacement into a load.
+
+### The `nop` after a call has nothing to do with the TOC
+
+It is the stack alignment rule of the ABI, and the compiler removes it
+only when the callee is in the same translation unit.  In the 17,851
+functions of the target that use the TOC, **88,590 of the 95,327 calls
+(92 %)** are followed by one.
+
 That is directly visible between the two Insomniac games.  The engine's
 initialisation function is at `0x10200` in *A Crack in Time* and at
 `0x10210` in *Tools of Destruction*, with the same frame, the same two

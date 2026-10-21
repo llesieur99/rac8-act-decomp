@@ -43,6 +43,13 @@ the window starts right after the descriptor: the layout is the
 PowerPC64 **small data** convention, with the TOC holding the base of a
 64 KB window instead of a pointer per global.
 
+The window holds **the values of the globals, not their addresses**: the
+retail code compares an entry with zero, and the entry at `0x00D34774`
+holds `0x40000000`, which is 2.0f.  The anchor in the middle of the
+window is the convention GNU ld applies by itself — the anchor of a
+`.toc` section defaults to `.toc + 0x8000` — and the harness that
+reproduces it is `tools/ppu_toc.py` (see [ABI.md](ABI.md)).
+
 ## What was counted
 
 | Measure | Value |
