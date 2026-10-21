@@ -191,18 +191,51 @@ from a guess into a measurement.
 ### Where the rebuilt compiler is not the retail one
 
 The toolchains built here are not a perfect reproduction of the compilers
-that built the games.  One difference is measured and documented in
+that built the games.  The difference is measured and documented in
 [ABI.md](ABI.md): the rebuilt compiler always keeps the link register in
 `r0`, while two of the retail executables spread it over `r0`, `r4`, `r5`
-and `r6`.  The rebuilt compiler matches the retail behaviour of the other
-executables (Jak 2, Jak 3, LittleBigPlanet, Uncharted, Assassin's Creed:
-`r0` in 100 % of the functions ✓) and does not match the two Insomniac
-games that mix the registers.
+and `r6`.
 
-That difference is the reason three of the readings are a few bytes away:
-the bytes agree right up to the `mflr`, and the register is the first thing
-that differs.  It is a property of the compiler build, and it is still
-open.
+The cause is now located.  In the compiler's own source, the register that
+holds the link register is written in four places, all of them hard-coded
+to `r0`:
+
+* the prologue's `mflr` — the move that takes the link register into a
+  general register;
+* the prologue's `std` — the store of that register in the frame;
+* the epilogue's `ld` — the reload of the saved link register;
+* the epilogue's `mtlr` — the move that puts it back.
+
+The retail's compiler does not do that: it lets the register allocator
+choose, and the proof is in the binary — the register it chooses is dead
+on entry and dead on exit in **23,333 of 23,333** cases, and it is reused
+right after the save (`mflr r5` / `std r5, …` / `li r5, 0`), which is the
+signature of an allocator and not of a fixed register.
+
+**The patch.**  A change to those four places that takes the register from
+a target option reproduces the retail's shape:
+
+| Option | Effect |
+|---|---|
+| `-mps3-lr-reg=N` | the prologue keeps the link register in `rN` |
+| `-mps3-lr-restore-reg=N` | the epilogue reloads it into `rN` |
+
+The default is the current behaviour, so the change is backwards
+compatible.  A contributor who has the SDK's sources can apply it: the
+four places are listed above, and the semantics are what the two options
+say.
+
+**What it buys.**  14,520 of the target's 23,333 functions with a frame
+are blocked on that choice; the option reaches 11,541 of them with
+`r4`, `r5` and `r6` alone, and 12,310 with `r7`.  The faithful repair
+would move the save into the RTL so that the allocator assigns the
+register as the retail's compiler does; that is the next thing to try.
+
+**And the option is not the whole answer.**  The register is only half of
+it: the *order* of the epilogue's `mtlr` and the stack restore is not
+fixed by the source either, and the reconstruction puts the stack restore
+first where the retail keeps the `mtlr` first in 87 % of its functions.
+
 
 ### Route B — the open route
 

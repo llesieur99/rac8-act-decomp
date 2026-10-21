@@ -70,6 +70,7 @@ DEFAULT_ELF = ""              # the retail executable
 IMAGE = "ps3gcc-toolchain"    # the container the SDK compiler runs in
 PREFIX = "/usr/local/cell/host-linux/ppu"
 GCC = f"{PREFIX}/bin/ppu-lv2-gcc"
+CXX = f"{PREFIX}/bin/ppu-lv2-g++"
 LD = f"{PREFIX}/bin/ppu-lv2-ld"
 TOOLCHAIN_OUT = ""            # where the SDK toolchain is mounted
 # The linker script of the harness and the generated header, next to this
@@ -428,25 +429,30 @@ def linker_script(address: int, callees: dict[str, int], toc_base: int = TOC_BAS
 
 
 def run_docker(workdir: str, command: str,
-               toolchain: str = TOOLCHAIN_OUT, image: str = IMAGE) -> subprocess.CompletedProcess:
+               toolchain: str | None = None, image: str | None = None) -> subprocess.CompletedProcess:
     cmd = [
         "docker", "run", "--rm",
         "-v", f"{workdir}:/w",
-        "-v", f"{toolchain}:/usr/local/cell",
-        image, "bash", "-c",
+        "-v", f"{toolchain or TOOLCHAIN_OUT}:/usr/local/cell",
+        image or IMAGE, "bash", "-c",
         f"export PATH={PREFIX}/bin:$PATH; " + command,
     ]
     return subprocess.run(cmd, capture_output=True, text=True)
 
 
-def compile_source(source_text: str, workdir: str, flags: list[str], name: str = "c") -> str:
+def compile_source(source_text: str, workdir: str, flags: list[str], name: str = "c",
+                   cpp: bool = False) -> str:
     obj = os.path.join(workdir, name + ".o")
+    # a C++ source is compiled with the C++ driver: the SDK's C++ front end
+    # returns a 32-bit value in r3, which the C one does not
+    driver = CXX if cpp else GCC
+    suffix = "cpp" if cpp else "c"
     # -Wa,-mregnames: the SDK's assembler only accepts the "off(r2)" form of
     # a TOC access when it knows the register names; without it, every
     # "lwz rX, off(r2)" is read as a relocation against a symbol named r2 and
     # the assembly fails with "unsupported relocation against r2".
-    command = (f"{GCC} -c -nostdinc -fno-builtin -Wa,-mregnames {' '.join(flags)} "
-               f"-o /w/{name}.o /w/{name}.c")
+    command = (f"{driver} -c -nostdinc -fno-builtin -Wa,-mregnames {' '.join(flags)} "
+               f"-o /w/{name}.o /w/{name}.{suffix}")
     result = run_docker(workdir, command)
     if not os.path.exists(obj):
         raise RuntimeError("compilation failed:\n" + (result.stdout + result.stderr)[-2000:])
@@ -488,14 +494,16 @@ def build(source_text: str, address: int, names: dict[str, int],
           model: TocModel | None = None,
           keep: bool = False,
           define_globals: bool = True,
-          shape: str = "address") -> bytes:
+          shape: str = "address",
+          cpp: bool = False) -> bytes:
     """Compile, move the TOC entries and link; return the linked ELF."""
     model = model or TocModel()
     callees = callees or {}
     flags = flags or ["-O1"]
+    unit = "cpp" if cpp else "c"
     workdir = tempfile.mkdtemp(prefix="toc-")
     try:
-        with open(os.path.join(workdir, "c.c"), "w", encoding="utf-8") as handle:
+        with open(os.path.join(workdir, f"c.{unit}"), "w", encoding="utf-8") as handle:
             handle.write(source_text)
         # the generated header, so that a candidate can include it
         header = HEADER_TEMPLATE
@@ -503,7 +511,7 @@ def build(source_text: str, address: int, names: dict[str, int],
             shutil.copy(header, os.path.join(workdir, "toc_globals.h"))
         with open(os.path.join(workdir, "l.lds"), "w", encoding="utf-8") as handle:
             handle.write(linker_script(address, callees))
-        obj = compile_source(source_text, workdir, flags, "c")
+        obj = compile_source(source_text, workdir, flags, "c", cpp=(unit == "cpp"))
         objects = ["c.o"]
         if define_globals and names:
             with open(os.path.join(workdir, "g.c"), "w", encoding="utf-8") as handle:
@@ -567,6 +575,7 @@ def c_header(model: TocModel | None = None, only: list[int] | None = None) -> st
 
 
 def main(argv: list[str] | None = None) -> int:
+    global TOOLCHAIN_OUT, IMAGE
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--globals-catalogue", default=DEFAULT_GLOBALS,
                         help="the catalogue of the retail globals")
@@ -601,6 +610,13 @@ def main(argv: list[str] | None = None) -> int:
     build_cmd.add_argument("--out")
 
     args = parser.parse_args(argv)
+
+    # the toolchain and the container are options: the harness runs the SDK
+    # compiler inside the container the contributor built it in
+    if args.toolchain:
+        TOOLCHAIN_OUT = args.toolchain
+    if args.image:
+        IMAGE = args.image
 
     if args.command == "info":
         model = TocModel(args.globals_catalogue)
@@ -642,7 +658,8 @@ def main(argv: list[str] | None = None) -> int:
             callees[name] = int(value, 16)
         model = TocModel(args.globals_catalogue)
         elf = build(source, int(args.address, 16), names, callees,
-                    args.flags.split(), model, shape=args.shape)
+                    args.flags.split(), model, shape=args.shape,
+                    cpp=args.source.lower().endswith(".cpp"))
         if args.out:
             with open(args.out, "wb") as handle:
                 handle.write(elf)

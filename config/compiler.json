@@ -18,16 +18,19 @@
     }
   },
   "flags": {
-    "status": "per link unit, not global: two different sets reproduce the target",
+    "status": "per link unit, not global: three different sets reproduce the target",
     "tested": [
       "-O1 -mno-save-restore-tocbase",
       "-O2 -mno-save-restore-tocbase",
-      "-O2"
+      "-O2",
+      "-O1 -mminimal-toc",
+      "-O1 -fschedule-insns2"
     ],
     "notes": [
       "-mno-save-restore-tocbase is what removes the TOC base from the frame; without it the compiler keeps a back chain the retail code does not have.",
       "the optimisation level is a property of the file, not of the build: the function at 0x10200 is reproduced at -O1 (or at -O2 with the second scheduler off), while the functions at 0x6FA4F8, 0x6FA6D0 and 0x6E1C78 need -O2 with the second scheduler on.  No single set of options reproduces all four, so the flags belong to the hypothesis about the source, not to the project.",
-      "the link-time fix-up of the SDK (ppu-lv2-prx-fixup) replaces the nop in the delay slot of a call that leaves the module with the restore of the TOC base; tools/ppu_prx.py does it, and the public toolchain sources do not carry the tool."
+      "the link-time fix-up of the SDK (ppu-lv2-prx-fixup) replaces the nop in the delay slot of a call that leaves the module with the restore of the TOC base; tools/ppu_prx.py does it, and the public toolchain sources do not carry the tool.",
+      "the retail's compiler lets the register allocator choose the register that holds the link register; the reconstruction hard-codes r0 in four places of its backend.  The option -mps3-lr-reg=N reproduces the choice; see COMPILER.md."
     ]
   },
   "matches": [
@@ -461,6 +464,38 @@
       "callees": [
         "sub_9E5440"
       ]
+    },
+    {
+      "function": "construct_local_buffer",
+      "source": "src/text/construct_local_buffer.c",
+      "address": "0x25D98",
+      "extent": "0x25D98 .. 0x25DC3",
+      "bytes": 44,
+      "flags": [
+        "-O1",
+        "-fschedule-insns2",
+        "-mps3-lr-reg=3"
+      ],
+      "callees": [
+        "0x4F9690"
+      ]
+    },
+    {
+      "function": "Object::call_with_49_and_1",
+      "source": "src/text/call_with_49_and_1.c",
+      "address": "0x10854",
+      "extent": "0x10854 .. 0x1087F",
+      "bytes": 44,
+      "flags": [
+        "-O1",
+        "-mminimal-toc",
+        "-fschedule-insns2",
+        "-mps3-lr-reg=4"
+      ],
+      "callees": [
+        "0x48F410"
+      ],
+      "language": "C++"
     }
   ],
   "body_gate": "open for the functions listed above; closed for everything else"
