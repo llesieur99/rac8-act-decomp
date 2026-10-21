@@ -53,6 +53,7 @@ supports is not a function.
 | distinct call targets | 26,280 |
 | **both methods agree** | **8,271** |
 | union of the two sets | 40,601 |
+| a disassembler's independent sample | 106, of which 105 are call targets |
 
 The call targets are spread over the whole program, including addresses
 below the code segment: the retail build calls into thunks and into the
@@ -67,3 +68,26 @@ cannot run in the repository's checks; the contributor's recipe is in
 the catalogue can call it a *function candidate*; when they do not, the
 address stays a candidate, and the difference is what the next wave has to
 explain.
+
+### The first cross-check
+
+A headless analysis of the rebuilt ELF (Ghidra 12.1.3, the
+`PowerPC:BE:64:default` language) was run over the whole executable. It
+found 106 functions, and the comparison with the two cheap methods is
+this:
+
+| Relation | Count |
+|---|---|
+| Ghidra's functions that are call targets | 105 |
+| Ghidra's functions that are prologue candidates | 41 |
+| Ghidra's functions in neither set | 1 |
+
+The call scan covers every function the disassembler found but one, which
+is the strongest result the catalogue has: the two methods agree with an
+independent analysis almost everywhere, and the address they disagree on
+is the one to look at first.
+
+The disassembler's own coverage is small — it analysed the executable's
+code far less thoroughly than the two scans do — so its 106 functions are
+a *sample*, not a limit. Its value is that it is independent, and it
+agrees.
