@@ -60,6 +60,23 @@ With the SDK's compiler and the flags `-O1 -mno-save-restore-tocbase`:
 The last line is the kind of result the catalogue is for: the address was a
 candidate, and the evidence says it is a block inside a bigger function.
 
+## What the measurements taught about the ABI
+
+Three things came out of the comparisons and are written up in
+[ABI.md](ABI.md):
+
+* the `nop` after a call depends on whether the **callee is known** to the
+  compiler — so the grouping of the functions into translation units is part
+  of what has to be recovered;
+* the TOC base (r2) is restored by some functions and not by others, so the
+  build's flags are not the same everywhere;
+* the epilogue comes in two shapes (`mtlr` before or after the stack
+  restore) and the shape is a property of the function.
+
+A candidate that reproduces the retail bytes therefore has to reproduce the
+*structure* of the original build, not only the instructions of one
+function.
+
 ## The next step
 
 1. Close the three other readings: each is a few bytes away, and the

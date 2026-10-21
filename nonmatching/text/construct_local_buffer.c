@@ -21,6 +21,12 @@
  *
  *     difference at 0x25D9D (+5 bytes in)
  *
+ * The retail code also stores the link register *after* the first constant
+ * is loaded, and loads that constant before the address of the buffer: the
+ * order is the register allocator's and the scheduler's, and it is
+ * reproduced by the source form and the translation unit, not by hand
+ * (docs/ABI.md).
+ *
  * What the code does
  * ------------------
  * The function sets up a stack frame, takes the address of a local

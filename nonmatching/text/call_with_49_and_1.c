@@ -25,6 +25,15 @@
  * leave the frame at 0x70.  The next attempt has to find what the retail
  * function keeps on the stack.
  *
+ * Two other differences are known and are not the source's fault:
+ *
+ * * the `nop` after a call depends on whether the callee is known to the
+ *   compiler (same translation unit), so this function has to be
+ *   reconstructed with its callee (docs/ABI.md);
+ * * the register the link register is moved through is the register
+ *   allocator's choice, and it differs from function to function.
+ *
+ *
  * What the code does
  * ------------------
  * The function forwards to another one with two constant arguments: 49
