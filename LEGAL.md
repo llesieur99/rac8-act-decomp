@@ -24,6 +24,14 @@ workspace is private and git-ignored, and the results that are published are
 the written reasoning, the measurements (addresses, sizes, hashes) and the
 tools.
 
+The same rule applies to the **toolchain**. A matching decompilation needs
+the compiler that produced the retail bytes; the project does not ship one,
+does not mirror one, does not describe how to obtain one, and does not
+publish a proprietary toolchain, a confidential source package, an SDK
+header or an SDK library. A contributor who has a licensed toolchain uses it
+in their own workspace, exactly like the sibling PlayStation 2 projects do
+with Sony's SN ProDG.
+
 ## Sourcing policy
 
 The evidence standard is the same as the sibling Ratchet &amp; Clank

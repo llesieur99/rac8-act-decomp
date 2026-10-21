@@ -51,17 +51,25 @@ SDK's libraries, its linker script and its C++ headers.
 
 * The SDK was never sold outside the developer programme, and that
   programme closed years ago. There is no commercial channel for it today.
-* The project follows the rule the sibling PlayStation 2 projects follow
-  with Sony's SN ProDG: **the toolchain is supplied by the contributor and
-  is never published here.** `docs/LEGAL.md` and `LEGAL.md` state the
-  boundary: the repository publishes written source, tools, measurements
-  and documentation, never a proprietary toolchain.
-* The project does not point at, describe or facilitate the acquisition of
-  leaked or unlicensed copies of the SDK, its headers or its samples. A
-  contributor who has a licensed copy uses it locally; the results — the
-  written source, the measurements — are what the project publishes.
+* The toolchain is a **tool**, like Sony's SN ProDG in the sibling
+  PlayStation 2 projects: the contributor brings their own copy, uses it
+  locally, and publishes only the written result. `LEGAL.md` states the
+  boundary — the repository never ships a proprietary toolchain, a
+  confidential source package, an SDK header or an SDK library.
+* The project does not describe how to obtain the SDK, and it does not
+  publish or mirror any part of it.
+* The toolchain's own sources are what make the route practical: the Cell
+  OS Lv-2 toolchain (SDK 2.7.0, GCC 4.1.1) is GCC 4.1.1 with the Cell
+  target, and it builds on an ordinary Linux system. The build takes a
+  container with a period-appropriate host compiler, which is what the
+  contributor's workspace does.
 * Whatever the toolchain, the *evidence* stays the same: the bytes are
   compared, and the gate is the complete-program hash.
+
+The first experiment with this route is the `body gate` on one of the
+functions read so far: compile the source with the SDK's compiler, link
+it at the measured address, and compare every byte
+([tools/compare_body.py](../tools/compare_body.py) does the comparison).
 
 ### Route B — the open route
 
