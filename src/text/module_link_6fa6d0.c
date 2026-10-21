@@ -7,7 +7,7 @@
  * Address  : 0x6FA6D0
  * Extent   : 0x6FA6D0 .. 0x6FA717 (72 bytes, 18 instructions)
  * Compiler : SCEI PPC GCC 4.1.1 (SDK270, $Rev: 3019 $), target ppu-lv2
- * Flags    : -O2 -mno-save-restore-tocbase
+ * Flags    : -O2
  * Result   : **byte-exact**.  The 72 bytes at 0x6FA6D0 are reproduced.
  *
  * The proof

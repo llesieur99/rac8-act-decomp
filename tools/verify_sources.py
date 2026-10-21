@@ -32,6 +32,7 @@ REPO = os.path.dirname(HERE)
 ADDRESS = re.compile(r"Address  : (0x[0-9A-Fa-f]+)")
 FLAGS = re.compile(r"Flags    : (.+)")
 CALLEE = re.compile(r"\b(sub_[0-9A-Fa-f]+)\s*\(")
+NEEDS_HARNESS = re.compile(r"needs the module's TOC layout")
 PREFIX = "/usr/local/cell/host-linux/ppu"
 
 
@@ -122,13 +123,21 @@ def main(argv: list[str] | None = None) -> int:
         print("no source found", file=sys.stderr)
         return 1
     matched = 0
+    skipped = 0
     for path in paths:
+        text = open(path, encoding="utf-8").read()
+        if NEEDS_HARNESS.search(text):
+            print(f"SKIP {os.path.basename(path):38s} needs the TOC harness "
+                  f"(tools/ppu_toc.py)")
+            skipped += 1
+            continue
         ok, message = build_and_compare(path, args.elf, args.toolchain, args.image)
         name = os.path.basename(path)
         print(f"{'OK  ' if ok else 'FAIL'} {name:38s} {message}")
         matched += ok
-    print(f"\n{matched} of {len(paths)} sources reproduce the retail bytes")
-    return 0 if matched == len(paths) else 1
+    print(f"\n{matched} of {len(paths) - skipped} sources reproduce the retail bytes"
+          + (f" ({skipped} need the TOC harness)" if skipped else ""))
+    return 0 if matched == len(paths) - skipped else 1
 
 
 if __name__ == "__main__":

@@ -297,22 +297,50 @@ class TocFixer:
         self.model = model
         self.shape = shape
 
-    def fix(self, data: bytes, names: dict[str, int]) -> tuple[bytes, list[str]]:
+    @staticmethod
+    def code_relocations(obj: ElfObject, skip: set[int]) -> list[tuple[dict, int]]:
+        """The relocation sections of the code, and the section they patch.
+
+        The code does not always live in ``.text``: with ``-ffunction-sections``
+        every function gets its own section.  The TOC accesses are found
+        wherever they are.
+        """
+        out = []
+        for section in obj.sections:
+            if section["type"] != SHT_RELA:
+                continue
+            if not section["name"].startswith(".rela."):
+                continue
+            target = section["info"]
+            if target in skip:
+                continue
+            out.append((section, target))
+        return out
+
+    def fix(self, data: bytes, names: dict[str, int],
+            anchor: str | None = None) -> tuple[bytes, list[str]]:
         """Return the fixed object and the list of globals that were moved.
 
         ``names`` maps a global name to its retail TOC offset.  Every global
         the object mentions must be listed, otherwise it keeps its
         compiler-chosen entry.
+
+        ``anchor`` names the global whose *retail* entry the module's TOC
+        anchor is stored in.  It is only used with ``-mminimal-toc``, where
+        the ``.toc`` table holds a single entry - the anchor of the secondary
+        TOC - instead of one entry per global.
         """
         obj = ElfObject(data)
         toc = obj.section(".toc")
         rela_toc = obj.section(".rela.toc")
-        text = obj.section(".text")
-        rela_text = obj.section(".rela.text")
         if toc is None or rela_toc is None:
             return data, []
         symtab = obj.sections[rela_toc["link"]]
         symbols = obj.symbols(symtab)
+
+        if obj.section(".toc1") is not None:
+            return self.fix_minimal_toc(obj, toc, rela_toc, symbols,
+                                         names, anchor)
 
         # entry offset -> global name, read from the object's own .toc
         entries: dict[int, str] = {}
@@ -329,15 +357,15 @@ class TocFixer:
                 wanted[name] = names[name]
 
         moved: list[str] = []
-        if rela_text is not None:
-            for reloc in obj.relocs(rela_text):
+        for rela, _target in self.code_relocations(obj, {toc["index"]}):
+            for reloc in obj.relocs(rela):
                 if reloc["type"] != R_PPC64_TOC16:
                     continue
                 name = entries.get(reloc["addend"])
                 if name is None or name not in wanted:
                     continue
                 slot = self.model.slot_offset(wanted[name])
-                obj.set_reloc(rela_text, reloc["index"], slot)
+                obj.set_reloc(rela, reloc["index"], slot)
                 moved.append(name)
 
         # Rebuild the .toc section: the entries move to their retail slots.
@@ -369,6 +397,66 @@ class TocFixer:
         }
         return obj.rebuild(replacements), sorted(set(moved))
 
+    def fix_minimal_toc(self, obj: ElfObject, toc: dict, rela_toc: dict,
+                        symbols: list[dict],
+                        names: dict[str, int],
+                        anchor: str | None) -> tuple[bytes, list[str]]:
+        """Move the TOC anchor of a ``-mminimal-toc`` object to its retail slot.
+
+        With ``-mminimal-toc`` the compiler builds a *secondary* TOC: the
+        ``.toc`` table holds a single entry - the address of the anchor of the
+        ``.toc1`` area - and the addresses of the globals live in the
+        ``.toc1`` area, at a fixed offset from that anchor.  The retail
+        reaches the globals of a linked module through exactly that scheme:
+        one load of the anchor out of the TOC, then one load of the global's
+        slot out of the secondary TOC.
+
+        So the ``.toc`` window keeps its retail geometry, and the *anchor*
+        entry - the only one the object has - is moved to the retail slot of
+        the global that stands for the linked module.
+        """
+        entries = {}
+        for reloc in obj.relocs(rela_toc):
+            if reloc["type"] == R_PPC64_ADDR32:
+                entries[reloc["offset"]] = reloc
+        code = self.code_relocations(obj, {toc["index"]})
+        # the anchor entry: the one the code refers to
+        anchor_entry = None
+        for rela, _target in code:
+            for reloc in obj.relocs(rela):
+                if reloc["type"] == R_PPC64_TOC16:
+                    anchor_entry = reloc["addend"]
+                    break
+            if anchor_entry is not None:
+                break
+        if anchor_entry is None:
+            return obj.rebuild({}), []
+        # the global whose retail entry holds the anchor
+        name = anchor if anchor else next(iter(names))
+        if name not in names:
+            raise KeyError(f"the anchor {name!r} is not in the catalogue")
+        slot = self.model.slot_offset(names[name])
+        moved: list[str] = []
+        for rela, _target in code:
+            for reloc in obj.relocs(rela):
+                if reloc["type"] != R_PPC64_TOC16:
+                    continue
+                obj.set_reloc(rela, reloc["index"], slot)
+                moved.append(name)
+        # the .toc table: the window, with the anchor entry at its slot
+        new_toc = bytearray(WINDOW)
+        rela_bytes = bytearray()
+        source = entries.get(anchor_entry)
+        if source is not None:
+            rela_bytes += struct.pack(">QQq", slot,
+                                      (source["symbol"] << 32) | R_PPC64_ADDR32,
+                                      source["addend"])
+        replacements = {
+            toc["index"]: bytes(new_toc),
+            rela_toc["index"]: bytes(rela_bytes),
+        }
+        return obj.rebuild(replacements), sorted(set(moved))
+
 
 def entries_offset_symbol(obj: ElfObject, rela_toc: dict, symbols: list[dict],
                            offset: int) -> int:
@@ -387,7 +475,26 @@ def entries_offset_symbol(obj: ElfObject, rela_toc: dict, symbols: list[dict],
 def linker_script(address: int, callees: dict[str, int], toc_base: int = TOC_BASE,
                   table_base: int = TABLE_BASE, window: int = WINDOW,
                   entry: str | None = None) -> str:
-    """The linker script that reproduces the retail TOC geometry."""
+    """The linker script that reproduces the retail TOC geometry.
+
+    The layout has to hold three things at once:
+
+    * the ``.toc`` table: the 64 KiB window of the retail, from
+      ``table_base`` to ``table_base + window``, with the anchor
+      (``_GLOBAL_OFFSET_TABLE_``, the value of ``r2``) in its middle;
+    * the ``.toc1`` area: the secondary TOC that ``-mminimal-toc`` builds.
+      It is *not* part of the window, so it lives after it;
+    * the ``.opd`` section: the function descriptors.  It used to sit right
+      at the end of the window, which overlapped it as soon as the ``.toc``
+      section grew by a single word - the globals' companion object brings
+      one entry of its own.  It now sits after the window *and* after a
+      margin, so the two never meet.
+
+    The function under test comes first: its section is named ``.text.f``
+    (the compiler's ``-ffunction-sections`` convention for a function called
+    ``f``), and the linker script puts it before the other code, so that it
+    lands on the retail address.
+    """
     calls = []
     for name, value in callees.items():
         calls.append(f"  {name} = {value:#010x};")
@@ -400,7 +507,7 @@ def linker_script(address: int, callees: dict[str, int], toc_base: int = TOC_BAS
         "SECTIONS",
         "{",
         f"  . = {address:#010x};",
-        "  .text : { *(.text .text.* .stub) }",
+        "  .text : { *(.text.f) *(.text .text.* .stub) }",
     ]
     if calls:
         lines.append("")
@@ -410,9 +517,11 @@ def linker_script(address: int, callees: dict[str, int], toc_base: int = TOC_BAS
         f"  . = {table_base:#010x};",
         f"  .toc {table_base:#010x} : {{ *(.toc) }}",
         f"  _GLOBAL_OFFSET_TABLE_ = {toc_base:#010x};",
-        f"  . = {table_base + window:#010x};",
-        "  .opd : { *(.opd) }",
+        "",
         f"  . = {table_base + window + 0x100:#010x};",
+        "  .toc1 : { *(.toc1) }",
+        "  .opd : { *(.opd) }",
+        f"  . = {table_base + window + 0x1000:#010x};",
         "  .data : { *(.data .data.*) }",
         "  .sdata : { *(.sdata .sdata.*) }",
         "  .bss : { *(.bss .bss.* .sbss .sbss.* COMMON) }",
@@ -488,6 +597,25 @@ def globals_source(names: list[str]) -> str:
     return "\n".join(lines)
 
 
+def strip_toc(data: bytes) -> bytes:
+    """Remove the ``.toc`` section (and its relocations) of an object.
+
+    The companion object that defines the globals brings an entry of its own
+    in the ``.toc`` table.  The table is rebuilt by the fixer, so that entry
+    is useless - and it makes the table one word longer than the 64 KiB
+    window, which is what pushed the ``.opd`` section over the window.
+    """
+    obj = ElfObject(data)
+    toc = obj.section(".toc")
+    if toc is None:
+        return data
+    replacements = {toc["index"]: b""}
+    rela = obj.section(".rela.toc")
+    if rela is not None:
+        replacements[rela["index"]] = b""
+    return obj.rebuild(replacements)
+
+
 def build(source_text: str, address: int, names: dict[str, int],
           callees: dict[str, int] | None = None,
           flags: list[str] | None = None,
@@ -495,7 +623,8 @@ def build(source_text: str, address: int, names: dict[str, int],
           keep: bool = False,
           define_globals: bool = True,
           shape: str = "address",
-          cpp: bool = False) -> bytes:
+          cpp: bool = False,
+          anchor: str | None = None) -> bytes:
     """Compile, move the TOC entries and link; return the linked ELF."""
     model = model or TocModel()
     callees = callees or {}
@@ -517,11 +646,16 @@ def build(source_text: str, address: int, names: dict[str, int],
             with open(os.path.join(workdir, "g.c"), "w", encoding="utf-8") as handle:
                 handle.write(globals_source(sorted(names)))
             compile_source(globals_source(sorted(names)), workdir, flags, "g")
+            # the globals' own TOC entry is useless: the table is rebuilt
+            with open(os.path.join(workdir, "g.o"), "rb") as handle:
+                raw_globals = handle.read()
+            with open(os.path.join(workdir, "g.o"), "wb") as handle:
+                handle.write(strip_toc(raw_globals))
             objects.append("g.o")
         with open(obj, "rb") as handle:
             raw = handle.read()
         fixer = TocFixer(model, shape)
-        fixed, moved = fixer.fix(raw, names)
+        fixed, moved = fixer.fix(raw, names, anchor)
         with open(obj, "wb") as handle:
             handle.write(fixed)
         linked = link_objects(objects, workdir)
@@ -607,6 +741,9 @@ def main(argv: list[str] | None = None) -> int:
     build_cmd.add_argument("--shape", default="address",
                            choices=["address", "value"],
                            help="what the .toc entries hold")
+    build_cmd.add_argument("--anchor", default="",
+                           help="the global whose retail entry holds the TOC "
+                                "anchor (only with -mminimal-toc)")
     build_cmd.add_argument("--out")
 
     args = parser.parse_args(argv)
@@ -659,7 +796,8 @@ def main(argv: list[str] | None = None) -> int:
         model = TocModel(args.globals_catalogue)
         elf = build(source, int(args.address, 16), names, callees,
                     args.flags.split(), model, shape=args.shape,
-                    cpp=args.source.lower().endswith(".cpp"))
+                    cpp=args.source.lower().endswith(".cpp"),
+                    anchor=args.anchor or None)
         if args.out:
             with open(args.out, "wb") as handle:
                 handle.write(elf)

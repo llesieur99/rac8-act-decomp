@@ -20,17 +20,16 @@
   "flags": {
     "status": "per link unit, not global: three different sets reproduce the target",
     "tested": [
-      "-O1 -mno-save-restore-tocbase",
-      "-O2 -mno-save-restore-tocbase",
+      "-O1",
       "-O2",
+      "-Os",
       "-O1 -mminimal-toc",
-      "-O1 -fschedule-insns2"
+      "-O2 -mminimal-toc"
     ],
     "notes": [
-      "-mno-save-restore-tocbase is what removes the TOC base from the frame; without it the compiler keeps a back chain the retail code does not have.",
-      "the optimisation level is a property of the file, not of the build: the function at 0x10200 is reproduced at -O1 (or at -O2 with the second scheduler off), while the functions at 0x6FA4F8, 0x6FA6D0 and 0x6E1C78 need -O2 with the second scheduler on.  No single set of options reproduces all four, so the flags belong to the hypothesis about the source, not to the project.",
-      "the link-time fix-up of the SDK (ppu-lv2-prx-fixup) replaces the nop in the delay slot of a call that leaves the module with the restore of the TOC base; tools/ppu_prx.py does it, and the public toolchain sources do not carry the tool.",
-      "the retail's compiler lets the register allocator choose the register that holds the link register; the reconstruction hard-codes r0 in four places of its backend.  The option -mps3-lr-reg=N reproduces the choice; see COMPILER.md."
+      "-mno-save-restore-tocbase is inert in this fork: the variable it sets is written once in the backend and never read.  Measured: the byte-exact functions reproduce the retail bytes with the option, without it and with it added.",
+      "-mminimal-toc is what changes the code: it makes the module's TOC hold one entry per procedure instead of one entry per global, and it changes the size of the frame.  The retail's files use it or not, so the options are a property of the file.",
+      "the retail's compiler lets the register allocator choose the register that holds the link register; the reconstruction hard-codes r0 in four places of its backend.  The option -mps3-lr-reg=N reproduces the choice; see COMPILER.md and patches/."
     ]
   },
   "matches": [
@@ -41,8 +40,7 @@
       "extent": "0x10200 .. 0x1022C",
       "bytes": 44,
       "flags": [
-        "-O1",
-        "-mno-save-restore-tocbase"
+        "-O1"
       ],
       "builds": [
         {
@@ -90,8 +88,7 @@
       "extent": "0x6FA4F8 .. 0x6FA53F",
       "bytes": 72,
       "flags": [
-        "-O2",
-        "-mno-save-restore-tocbase"
+        "-O2"
       ],
       "callees": [
         "0x702DC8",
@@ -105,8 +102,7 @@
       "extent": "0x6FA6D0 .. 0x6FA717",
       "bytes": 72,
       "flags": [
-        "-O2",
-        "-mno-save-restore-tocbase"
+        "-O2"
       ],
       "callees": [
         "0x702DC8",
@@ -120,8 +116,7 @@
       "extent": "0x6E1C78 .. 0x6E1CC7",
       "bytes": 80,
       "flags": [
-        "-O2",
-        "-mno-save-restore-tocbase"
+        "-O2"
       ],
       "callees": [
         "0x903748"
@@ -496,6 +491,23 @@
         "0x48F410"
       ],
       "language": "C++"
+    },
+    {
+      "function": "read_global_and_call",
+      "source": "src/text/read_global_and_call.c",
+      "address": "0x3B704",
+      "extent": "0x3B704 .. 0x3B73B",
+      "bytes": 56,
+      "flags": [
+        "-O2",
+        "-mminimal-toc",
+        "-mps3-lr-reg=3",
+        "-falign-functions=2"
+      ],
+      "callees": [
+        "0x3BFC4"
+      ],
+      "needs": "the TOC harness (tools/ppu_toc.py)"
     }
   ],
   "body_gate": "open for the functions listed above; closed for everything else"

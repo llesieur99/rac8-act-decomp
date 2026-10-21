@@ -18,7 +18,7 @@
 | twenty-five more byte-exact bodies | **done**: the one-line wrappers of the linked modules, 36 to 40 bytes each ([src/text/](../src/text/)) |
 | two of the three blocked readings | **done**: 0x25D98 and 0x10854 — the second one is a C++ method |
 | the other readings | in progress: 0x3B704 needs the TOC and a frame the harness cannot yet build |
-| a qualified PPU compiler and its options | **per link unit**: `-O1` reproduces the first function, `-O2` the three others; the options belong to the source hypothesis |
+| a qualified PPU compiler and its options | **per link unit**: `-O1`, `-O2`, `-O2 -mminimal-toc` and `-fschedule-insns2` all appear; the options belong to the source hypothesis |
 | the same engine in other games | **done**: the matched function is in Jak 2, Jak 3 and Jak and Daxter, at the same address ([CROSS-GAME.md](CROSS-GAME.md)) |
 | a second SDK's toolchain | **done**: SDK 3.6.0 built from its own sources; the same source matches 44 of 44 bytes in Jak 3 and in Jak 2 |
 | the globals | **done**: 5,032 of them, and the structure of the TOC ([GLOBALS.md](GLOBALS.md)) |
@@ -62,9 +62,9 @@ With the SDK's compiler and `-mno-save-restore-tocbase`:
 | `module_link_6FA6D0` | `0x6FA6D0` | 72 | `-O2` | **match** |
 | `float_to_short_6E1C78` | `0x6E1C78` | 80 | `-O2` | **match** |
 | `construct_local_buffer` | `0x25D98` | 44 | `-O1 -fschedule-insns2` | **match** |
-| `Object::call_with_49_and_1` | `0x10854` | 44 | `-O1 -mminimal-toc` | **match** (C++) |
+| `Object::call_with_49_and_1` | `0x10854` | 44 | `-O1 -mminimal-toc -fschedule-insns2` | **match** (C++) |
+| `read_global_and_call` | `0x3B704` | 56 | `-O2 -mminimal-toc` | **match** |
 | 25 wrappers of the linked modules | `0x719CA0` … | 36–40 | `-O2` | **match** (25) |
-| `read_global_and_call` | `0x3B704` | — | — | the TOC and a frame the harness cannot yet build |
 | the block at `0x21B5C8` | — | — | — | turned out **not to be a function**: no prologue, no caller, and it ends another function |
 
 The last line is the kind of result the catalogue is for: the address was a

@@ -7,7 +7,7 @@
  * Address  : 0x10200
  * Extent   : 0x10200 .. 0x1022C (44 bytes, 11 instructions)
  * Compiler : SCEI PPC GCC 4.1.1 (SDK270, $Rev: 3019 $), target ppu-lv2
- * Flags    : -O1 -mno-save-restore-tocbase
+ * Flags    : -O1
  * Result   : **byte-exact**.  The 44 bytes at 0x10200 are reproduced.
  *
  * The proof

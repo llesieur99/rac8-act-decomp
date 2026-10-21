@@ -18,10 +18,23 @@ The SDK adds two target options to the rs6000 backend
 A third one, `-mcellos-kernel`, turns both of them on and adds
 `-falign-functions=1 -falign-jumps=1 -falign-labels=1 -falign-loops=1`.
 
+**The second one is inert in this fork.**  The variable it sets is written
+once in the backend and never read: the option is accepted, it sets a
+flag, and nothing changes.  This was measured, not assumed: the functions
+that are byte-exact reproduce the retail bytes with the option, without it,
+and with it added to a set that already worked.
+
+The option that *does* change the code is **`-mminimal-toc`**, which is
+one of the generic rs6000 options: it makes the module's TOC hold one
+entry per procedure instead of one entry per global, it moves the
+secondary table to a section of its own, and it changes the size of the
+frame.  The retail's code uses it in some files and not in others — the
+frame of the function at 0x25D98 is 0x90 bytes, the default TOC, while the
+frame of the function at 0x10854 is 0x80 bytes, `-mminimal-toc` — and the
+options are a property of the file, not of the project.
+
 The retail code keeps the `nop` after most calls **and** restores the TOC
-base in some functions, so the game was built with neither option *by
-default*; `-mno-save-restore-tocbase` is what reproduces the prologue of
-the first matched function (see [COMPILER.md](COMPILER.md)).
+base in some functions, so neither option was turned on by default.
 
 ## The `nop` after a call depends on the callee
 

@@ -154,22 +154,35 @@ The other functions of the library are simply not linked into the game:
 the linker only pulls what the program needs, so their absence from the
 retail executable is not a difference.
 
-One flag turned out to matter more than the optimisation level:
-**`-mno-save-restore-tocbase`**.  Without it, the compiler keeps a TOC
-base and a back chain in the frame, which the retail code does not have.
-With it, the prologue and the epilogue of the first function came out
-byte for byte identical to the retail ones, and the whole function
-matched:
+One option turned out to matter more than the optimisation level:
+**`-mminimal-toc`**.  It makes the module's TOC hold one entry per
+procedure instead of one entry per global, and it changes the size of the
+frame — 0x80 bytes instead of 0x90 in the functions that use it.  The
+retail's files use it or not, so the options are a property of the *file*,
+not of the build.
+
+**`-mno-save-restore-tocbase`, which the SDK adds, is inert in this
+fork.**  The variable it sets is written once in the backend and never
+read: the option is accepted, it sets a flag, and nothing changes.  That
+was measured rather than assumed — the functions that are byte-exact
+reproduce the retail bytes with the option, without it, and with it added
+to a set that already worked.
+
+The first functions were reproduced like this:
 
 | Function | Address | Bytes | Flags | Result |
 |---|---|---|---|---|
-| `module_init` | `0x10200` | 44 | `-O1 -mno-save-restore-tocbase` | **match** |
+| `module_init` | `0x10200` | 44 | `-O1` | **match** |
+| `module_link_6FA4F8` | `0x6FA4F8` | 72 | `-O2` | **match** |
+| `module_link_6FA6D0` | `0x6FA6D0` | 72 | `-O2` | **match** |
+| `float_to_short_6E1C78` | `0x6E1C78` | 80 | `-O2` | **match** |
+| `construct_local_buffer` | `0x25D98` | 44 | `-O1 -fschedule-insns2` | **match** |
+| `Object::call_with_49_and_1` | `0x10854` | 44 | `-O1 -mminimal-toc -fschedule-insns2` | **match** |
+| `read_global_and_call` | `0x3B704` | 56 | `-O2 -mminimal-toc -falign-functions=2` | **match** |
 
-At `-O2` the same function differs by two instructions: the compiler
-restores the stack pointer before the link register, where the retail
-code does the opposite.  The flags are therefore recorded in
-[`config/compiler.json`](../config/compiler.json) as *provisional* — one
-function is not enough to qualify a build.
+The flags are therefore recorded in
+[`config/compiler.json`](../config/compiler.json) per function, and they
+are re-verified by `tools/verify_sources.py`.
 
 ### The second toolchain
 
