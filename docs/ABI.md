@@ -394,15 +394,60 @@ blr
 ```
 
 Both occur in the same executable, so the order is a property of the
-function, not of the build flags.  A candidate that always produces one of
-them will match half the functions and no more.
+function, not of the build flags.
+
+**And the compiler that produced it agrees, function by function.**  The
+reconstruction reproduces the retail's order in **66 functions out of 66**
+that were compiled from known sources, and in all the sources the project
+publishes.  Both orders appear in the same sample: the initialisation
+function at `0x10200` ends with the `mtlr` first, like the retail's, and
+the one-line wrappers end with the stack restore first, like the retail's.
+
+What decides it is the **source's shape**, and the rule was measured:
+
+* the backend emits the link register's restore *before* the other
+  registers and dereferences the stack *last*, the way the ABI wants it;
+* but the prologue and the epilogue are ordinary RTL in Sony's backend, so
+  the instruction scheduler sees them and may permute them;
+* `sched2` then places the `mtlr` two cycles after the reload, and the
+  stack restore at the last load of the frame.
+
+So the order follows the number of frame loads after the link register's
+reload:
+
+| Loads after the reload | `mtlr` first |
+|---|---|
+| none | 27 % |
+| one | 74 % |
+| two or more | 99,8 % |
+
+and the source's shape is what feeds that number: a function whose
+epilogue ends with the `mtlr` first restores at least one callee-saved
+register, and one that ends with the stack restore first restores only
+one.
+
+Of the target's functions, 87 % end with the `mtlr` first (69 % in *Tools
+of Destruction*), and the zone of the executable decides nothing — the
+proportion varies inside each module.
+
+`-fno-schedule-insns2` is the only option that changes the order — it
+puts the `mtlr` first everywhere — which is the direct proof that the
+scheduler is what decides.  It is not a repair: it breaks every function
+that is byte-exact.
+
+**There is no compiler difference here.**  What the project still had to
+reproduce was the *source's* shape, and it now can.
 
 ## What this means for a wave
 
 1. Recover the *grouping* of the functions, not only the functions: the
    translation unit changes the bytes.
 2. Recover the *flags* of each group.  They are not necessarily the same
-   everywhere: the prologue of one function may say the TOC base is not
-   saved while another's says it is.
-3. Compare the bytes, not the intent.  The register allocator's choices are
-   part of what has to be reproduced, and they are the project's evidence.
+   everywhere: one file's functions keep the link register in `r0` and
+   another's in `r4`, and one file was built with `-mminimal-toc` while
+   another was not.
+3. Recover the *shape* of each function: whether it restores a
+   callee-saved register decides the order of its epilogue.
+4. Compare the bytes, not the intent.  The register allocator's choices
+   are part of what has to be reproduced, and they are the project's
+   evidence.
