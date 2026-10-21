@@ -76,6 +76,30 @@ def group(pairs: list[tuple[int, int]], gap: int = DEFAULT_GAP) -> list[list[int
     return units
 
 
+def modules(pairs: list[tuple[int, int]]) -> list[list[int]]:
+    """Split the descriptor into the runs of entries that share a TOC base.
+
+    Each entry carries the TOC base of the module that exports the
+    function.  Almost all of them carry the same one — the executable's
+    own — so the runs say how many of the listed functions belong to it,
+    and where the other bases start.
+    """
+    units: list[list[int]] = []
+    current: list[int] = []
+    base = None
+    for function, module_base in pairs:
+        if current and module_base == base:
+            current.append(function)
+        else:
+            if current:
+                units.append(current)
+            current = [function]
+            base = module_base
+    if current:
+        units.append(current)
+    return units
+
+
 def owner_of(units: list[list[int]]) -> dict[int, int]:
     owner: dict[int, int] = {}
     for index, unit in enumerate(units):
@@ -153,8 +177,12 @@ def main(argv: list[str] | None = None) -> int:
     print(f"module descriptor at 0x{elf.entry:X}: {len(pairs)} functions")
     print(f"  {len(units)} link units, the largest ones holding "
           f"{', '.join(str(size) for size in sizes[:8])} functions")
-    modules = Counter(module for _function, module in pairs)
-    print(f"  {len(modules)} distinct module bases")
+    bases = Counter(module for _function, module in pairs)
+    print(f"  {len(bases)} distinct TOC bases")
+    linked = modules(pairs)
+    linked_sizes = sorted((len(module) for module in linked), reverse=True)
+    print(f"  {len(linked)} runs of entries sharing a TOC base, the largest holding "
+          f"{', '.join(str(size) for size in linked_sizes[:4])} functions")
     if args.check:
         same_no_nop, same_nop, other_no_nop, other_nop = check(elf, units, owner)
         print("  call to a function of the same unit : "
