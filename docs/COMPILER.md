@@ -221,9 +221,11 @@ a target option reproduces the retail's shape:
 | `-mps3-lr-restore-reg=N` | the epilogue reloads it into `rN` |
 
 The default is the current behaviour, so the change is backwards
-compatible.  A contributor who has the SDK's sources can apply it: the
-four places are listed above, and the semantics are what the two options
-say.
+compatible.  **The patch is published** — it touches the two files of the
+backend that are upstream GCC and that carry the Free Software
+Foundation's GPL notice, and nothing else; see
+[`patches/README.md`](../patches/README.md) for the licence and the
+details.
 
 **What it buys.**  14,520 of the target's 23,333 functions with a frame
 are blocked on that choice; the option reaches 11,541 of them with

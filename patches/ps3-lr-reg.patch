@@ -1,0 +1,84 @@
+The link register patch.
+
+The two files this patch touches - gcc/config/rs6000/rs6000.c and
+gcc/config/rs6000/rs6000.opt - are upstream GNU Compiler Collection, and
+each carries the Free Software Foundation's notice:
+
+    This file is part of GCC.  GCC is free software; you can redistribute
+    it and/or modify it under the terms of the GNU General Public License
+    as published by the Free Software Foundation; either version 2, or (at
+    your option) any later version.
+
+A modification of a GPL file is under the GPL, so this patch is published
+under the same terms, with the notices kept.  It touches no file that Sony
+added to GCC, and quotes no SDK header, library or sample.  See
+patches/README.md for what it does and what it buys.
+diff --git a/gcc/config/rs6000/rs6000.c b/gcc/config/rs6000/rs6000.c
+index 12592c0..64940db 100644
+--- a/gcc/config/rs6000/rs6000.c
++++ b/gcc/config/rs6000/rs6000.c
+@@ -15826,10 +15826,13 @@ rs6000_emit_prologue (void)
+       insn = emit_insn (generate_set_vrsave (reg, info, 0));
+     }
+ 
+-  /* If we use the link register, get it into r0.  */
++  /* If we use the link register, get it into the register the target
++     option asks for.  Sony's compiler lets the register allocator choose
++     it, and the retail's code keeps the link register in r0 in only part
++     of its functions; the reconstruction hardcodes r0.  */
+   if (!WORLD_SAVE_P (info) && info->lr_save_p)
+     {
+-      insn = emit_move_insn (gen_rtx_REG (Pmode, 0),
++      insn = emit_move_insn (gen_rtx_REG (Pmode, ps3_lr_reg),
+ 			     gen_rtx_REG (Pmode, LINK_REGISTER_REGNUM));
+       RTX_FRAME_RELATED_P (insn) = 1;
+     }
+@@ -16090,7 +16093,7 @@ rs6000_emit_prologue (void)
+       int offset = info->lr_save_offset + sp_offset;
+       rtx addr = gen_rtx_PLUS (Pmode, frame_reg_rtx,
+ 			       GEN_INT (offset));
+-      rtx reg = gen_rtx_REG (Pmode, 0);
++      rtx reg = gen_rtx_REG (Pmode, ps3_lr_reg);
+       rtx mem = gen_rtx_MEM (Pmode, addr);
+       /* This should not be of rs6000_sr_alias_set, because of
+ 	 __builtin_return_address.  */
+@@ -16589,7 +16592,7 @@ rs6000_emit_epilogue (int sibcall)
+ 
+       set_mem_alias_set (mem, rs6000_sr_alias_set);
+ 
+-      emit_move_insn (gen_rtx_REG (Pmode, 0), mem);
++      emit_move_insn (gen_rtx_REG (Pmode, ps3_lr_restore_reg), mem);
+     }
+ 
+   /* Get the old cr if we saved it.  */
+@@ -16608,7 +16611,7 @@ rs6000_emit_epilogue (int sibcall)
+   if (info->lr_save_p && (info->lr_save_inline_p || sibcall))
+     {
+       emit_move_insn (gen_rtx_REG (Pmode, LINK_REGISTER_REGNUM),
+-		      gen_rtx_REG (Pmode, 0));
++		      gen_rtx_REG (Pmode, ps3_lr_restore_reg));
+     }
+ 
+   /* Load exception handler data registers, if needed.  */
+diff --git a/gcc/config/rs6000/rs6000.opt b/gcc/config/rs6000/rs6000.opt
+index 3f0ed55..e65065f 100644
+--- a/gcc/config/rs6000/rs6000.opt
++++ b/gcc/config/rs6000/rs6000.opt
+@@ -298,3 +298,17 @@ muse-save-restore-funcs=
+ Target RejectNegative Joined UInteger Var(rs6000_save_restore_funcs)
+ Call functions to save and restore registers when it decreases the size of a function by N or more instructions
+ 
++
++; The general purpose register the compiler keeps the link register in.
++; The retail's compiler lets the register allocator choose it, so the
++; link register is in r0 in only part of its functions; the
++; reconstruction hard-codes r0.  -mps3-lr-reg=N chooses the register of
++; the prologue, and -mps3-lr-restore-reg=N the register the saved link
++; register is reloaded into in the epilogue.
++mps3-lr-reg=
++Target Var(ps3_lr_reg) Init(0) Joined UInteger
++The general purpose register the prologue keeps the link register in.
++
++mps3-lr-restore-reg=
++Target Var(ps3_lr_restore_reg) Init(0) Joined UInteger
++The general purpose register the epilogue reloads the link register into.

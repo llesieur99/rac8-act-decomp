@@ -16,6 +16,15 @@ C/C++ source, tools, research metadata and documentation.
 The tools in `tools/` read a package and a decrypted executable from a path
 the contributor chooses; they never ship one.
 
+**One exception, and it is a GPL one.**  `patches/` holds a patch to the
+**upstream GNU Compiler Collection** — to `gcc/config/rs6000/rs6000.c` and
+`gcc/config/rs6000/rs6000.opt`, the two files of the SDK's toolchain that
+are GCC's own and that carry the Free Software Foundation's notice.  A
+modification of a GPL file is under the GPL, and the patch is published
+under the same terms with the notices kept.  It quotes no SDK header, no
+SDK library and no SDK sample, and it touches no file that Sony added.
+
+
 ## What a contributor needs
 
 Your own lawful copy of the game, and the licence file that belongs to your
