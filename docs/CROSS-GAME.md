@@ -92,6 +92,28 @@ bytes reproduced from source in A Crack in Time are the same 44 bytes that
 Jak 2 and Jak 3 carry, so the source is not a coincidence that happens to
 fit one build.
 
+## The PlayStation 4 was looked at, and there is nothing to read
+
+The share holds thirty-one PlayStation 4 packages, and the obvious
+question was whether one of them would show whether the PlayStation 4's
+chain of compilers mixes the registers as well.  It does not answer it:
+**every one of those packages is an "extra package"** (`\x7FCNT`, the
+format Sony's PlayGo uses), not a `\x7FPKG`, and their volumes are
+encrypted — a full entropy map of the largest one measures 7.997 bits per
+byte, and a byte-for-byte search of two of them finds no executable at
+all.
+
+So no PlayStation 4 code was readable, and the question was answered
+without it: *Uncharted*, built with the same compiler as *Tools of
+Destruction*, keeps the link register in `r0` in every function.  The
+PlayStation 4's chain was never needed to tell a compiler difference
+from a code difference.
+
+The reader that would do it — it walks the container, looks for any clear
+ELF64 big-endian PowerPC executable and hands it to the tools of this
+repository — was written and kept in the contributor's workspace, ready
+for a source that is not encrypted.
+
 ## What the other games teach about the analysis
 
 **The code segment cannot be recognised by its size.**  The PPU executables
