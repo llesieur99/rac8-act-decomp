@@ -19,10 +19,15 @@
   },
   "flags": {
     "status": "per link unit, not global: two different sets reproduce the target",
-    "tested": ["-O1 -mno-save-restore-tocbase", "-O2 -mno-save-restore-tocbase"],
+    "tested": [
+      "-O1 -mno-save-restore-tocbase",
+      "-O2 -mno-save-restore-tocbase",
+      "-O2"
+    ],
     "notes": [
       "-mno-save-restore-tocbase is what removes the TOC base from the frame; without it the compiler keeps a back chain the retail code does not have.",
-      "the optimisation level is a property of the file, not of the build: the function at 0x10200 is reproduced at -O1 (or at -O2 with the second scheduler off), while the functions at 0x6FA4F8, 0x6FA6D0 and 0x6E1C78 need -O2 with the second scheduler on.  No single set of options reproduces all four, so the flags belong to the hypothesis about the source, not to the project."
+      "the optimisation level is a property of the file, not of the build: the function at 0x10200 is reproduced at -O1 (or at -O2 with the second scheduler off), while the functions at 0x6FA4F8, 0x6FA6D0 and 0x6E1C78 need -O2 with the second scheduler on.  No single set of options reproduces all four, so the flags belong to the hypothesis about the source, not to the project.",
+      "the link-time fix-up of the SDK (ppu-lv2-prx-fixup) replaces the nop in the delay slot of a call that leaves the module with the restore of the TOC base; tools/ppu_prx.py does it, and the public toolchain sources do not carry the tool."
     ]
   },
   "matches": [
@@ -32,12 +37,47 @@
       "address": "0x10200",
       "extent": "0x10200 .. 0x1022C",
       "bytes": 44,
-      "flags": ["-O1", "-mno-save-restore-tocbase"],
+      "flags": [
+        "-O1",
+        "-mno-save-restore-tocbase"
+      ],
       "builds": [
-        {"game": "Ratchet & Clank: A Crack in Time (USA NPUA80966)", "sdk": "SDK270", "callees": ["0x10638", "0x4E2518"], "result": "44 of 44 bytes"},
-        {"game": "Jak 3", "sdk": "SDK360", "callees": ["0x105A8", "0x67AF8"], "result": "44 of 44 bytes"},
-        {"game": "Jak 2", "sdk": "SDK360", "callees": ["0x105A8", "0x67AE8"], "result": "44 of 44 bytes"},
-        {"game": "Jak and Daxter: The Precursor", "sdk": "SDK360", "callees": ["0x105A8", "0x59BB8"], "result": "44 of 44 bytes"}
+        {
+          "game": "Ratchet & Clank: A Crack in Time (USA NPUA80966)",
+          "sdk": "SDK270",
+          "callees": [
+            "0x10638",
+            "0x4E2518"
+          ],
+          "result": "44 of 44 bytes"
+        },
+        {
+          "game": "Jak 3",
+          "sdk": "SDK360",
+          "callees": [
+            "0x105A8",
+            "0x67AF8"
+          ],
+          "result": "44 of 44 bytes"
+        },
+        {
+          "game": "Jak 2",
+          "sdk": "SDK360",
+          "callees": [
+            "0x105A8",
+            "0x67AE8"
+          ],
+          "result": "44 of 44 bytes"
+        },
+        {
+          "game": "Jak and Daxter: The Precursor",
+          "sdk": "SDK360",
+          "callees": [
+            "0x105A8",
+            "0x59BB8"
+          ],
+          "result": "44 of 44 bytes"
+        }
       ]
     },
     {
@@ -46,8 +86,14 @@
       "address": "0x6FA4F8",
       "extent": "0x6FA4F8 .. 0x6FA53F",
       "bytes": 72,
-      "flags": ["-O2", "-mno-save-restore-tocbase"],
-      "callees": ["0x702DC8", "0x714790"]
+      "flags": [
+        "-O2",
+        "-mno-save-restore-tocbase"
+      ],
+      "callees": [
+        "0x702DC8",
+        "0x714790"
+      ]
     },
     {
       "function": "module_link_6FA6D0",
@@ -55,8 +101,14 @@
       "address": "0x6FA6D0",
       "extent": "0x6FA6D0 .. 0x6FA717",
       "bytes": 72,
-      "flags": ["-O2", "-mno-save-restore-tocbase"],
-      "callees": ["0x702DC8", "0x714790"]
+      "flags": [
+        "-O2",
+        "-mno-save-restore-tocbase"
+      ],
+      "callees": [
+        "0x702DC8",
+        "0x714790"
+      ]
     },
     {
       "function": "float_to_short_6E1C78",
@@ -64,8 +116,351 @@
       "address": "0x6E1C78",
       "extent": "0x6E1C78 .. 0x6E1CC7",
       "bytes": 80,
-      "flags": ["-O2", "-mno-save-restore-tocbase"],
-      "callees": ["0x903748"]
+      "flags": [
+        "-O2",
+        "-mno-save-restore-tocbase"
+      ],
+      "callees": [
+        "0x903748"
+      ]
+    },
+    {
+      "function": "wrapper_719CA0",
+      "source": "src/text/wrapper_719ca0.c",
+      "address": "0x719CA0",
+      "extent": "0x719CA0 .. 0x719CC4",
+      "bytes": 36,
+      "flags": [
+        "-O2"
+      ],
+      "callees": [
+        "sub_717740"
+      ]
+    },
+    {
+      "function": "wrapper_71C090",
+      "source": "src/text/wrapper_71c090.c",
+      "address": "0x71C090",
+      "extent": "0x71C090 .. 0x71C0B4",
+      "bytes": 36,
+      "flags": [
+        "-O2"
+      ],
+      "callees": [
+        "sub_71AA70"
+      ]
+    },
+    {
+      "function": "wrapper_740190",
+      "source": "src/text/wrapper_740190.c",
+      "address": "0x740190",
+      "extent": "0x740190 .. 0x7401B8",
+      "bytes": 40,
+      "flags": [
+        "-O2"
+      ],
+      "callees": [
+        "sub_741F98"
+      ]
+    },
+    {
+      "function": "wrapper_785170",
+      "source": "src/text/wrapper_785170.c",
+      "address": "0x785170",
+      "extent": "0x785170 .. 0x785194",
+      "bytes": 36,
+      "flags": [
+        "-O2"
+      ],
+      "callees": [
+        "sub_9D66C8"
+      ]
+    },
+    {
+      "function": "wrapper_787B70",
+      "source": "src/text/wrapper_787b70.c",
+      "address": "0x787B70",
+      "extent": "0x787B70 .. 0x787B94",
+      "bytes": 36,
+      "flags": [
+        "-O2"
+      ],
+      "callees": [
+        "sub_9D72B0"
+      ]
+    },
+    {
+      "function": "wrapper_788220",
+      "source": "src/text/wrapper_788220.c",
+      "address": "0x788220",
+      "extent": "0x788220 .. 0x788244",
+      "bytes": 36,
+      "flags": [
+        "-O2"
+      ],
+      "callees": [
+        "sub_9D7CE8"
+      ]
+    },
+    {
+      "function": "wrapper_7F9C88",
+      "source": "src/text/wrapper_7f9c88.c",
+      "address": "0x7F9C88",
+      "extent": "0x7F9C88 .. 0x7F9CAC",
+      "bytes": 36,
+      "flags": [
+        "-O2"
+      ],
+      "callees": [
+        "sub_856170"
+      ]
+    },
+    {
+      "function": "wrapper_898148",
+      "source": "src/text/wrapper_898148.c",
+      "address": "0x898148",
+      "extent": "0x898148 .. 0x898174",
+      "bytes": 44,
+      "flags": [
+        "-O2"
+      ],
+      "callees": [
+        "sub_7D7920"
+      ]
+    },
+    {
+      "function": "wrapper_910928",
+      "source": "src/text/wrapper_910928.c",
+      "address": "0x910928",
+      "extent": "0x910928 .. 0x91094C",
+      "bytes": 36,
+      "flags": [
+        "-O2"
+      ],
+      "callees": [
+        "sub_910490"
+      ]
+    },
+    {
+      "function": "wrapper_970FF0",
+      "source": "src/text/wrapper_970ff0.c",
+      "address": "0x970FF0",
+      "extent": "0x970FF0 .. 0x971014",
+      "bytes": 36,
+      "flags": [
+        "-O2",
+        "-mminimal-toc"
+      ],
+      "callees": [
+        "sub_989B90"
+      ]
+    },
+    {
+      "function": "wrapper_9718A0",
+      "source": "src/text/wrapper_9718a0.c",
+      "address": "0x9718A0",
+      "extent": "0x9718A0 .. 0x9718C4",
+      "bytes": 36,
+      "flags": [
+        "-O2",
+        "-mminimal-toc"
+      ],
+      "callees": [
+        "sub_98A928"
+      ]
+    },
+    {
+      "function": "wrapper_9718C8",
+      "source": "src/text/wrapper_9718c8.c",
+      "address": "0x9718C8",
+      "extent": "0x9718C8 .. 0x9718EC",
+      "bytes": 36,
+      "flags": [
+        "-O2",
+        "-mminimal-toc"
+      ],
+      "callees": [
+        "sub_98A388"
+      ]
+    },
+    {
+      "function": "wrapper_971930",
+      "source": "src/text/wrapper_971930.c",
+      "address": "0x971930",
+      "extent": "0x971930 .. 0x971954",
+      "bytes": 36,
+      "flags": [
+        "-O2",
+        "-mminimal-toc"
+      ],
+      "callees": [
+        "sub_98A5C8"
+      ]
+    },
+    {
+      "function": "wrapper_971958",
+      "source": "src/text/wrapper_971958.c",
+      "address": "0x971958",
+      "extent": "0x971958 .. 0x97197C",
+      "bytes": 36,
+      "flags": [
+        "-O2",
+        "-mminimal-toc"
+      ],
+      "callees": [
+        "sub_98AA28"
+      ]
+    },
+    {
+      "function": "wrapper_971980",
+      "source": "src/text/wrapper_971980.c",
+      "address": "0x971980",
+      "extent": "0x971980 .. 0x9719A4",
+      "bytes": 36,
+      "flags": [
+        "-O2",
+        "-mminimal-toc"
+      ],
+      "callees": [
+        "sub_98AB40"
+      ]
+    },
+    {
+      "function": "wrapper_9719D0",
+      "source": "src/text/wrapper_9719d0.c",
+      "address": "0x9719D0",
+      "extent": "0x9719D0 .. 0x9719F4",
+      "bytes": 36,
+      "flags": [
+        "-O2",
+        "-mminimal-toc"
+      ],
+      "callees": [
+        "sub_98ABF0"
+      ]
+    },
+    {
+      "function": "wrapper_9719F8",
+      "source": "src/text/wrapper_9719f8.c",
+      "address": "0x9719F8",
+      "extent": "0x9719F8 .. 0x971A1C",
+      "bytes": 36,
+      "flags": [
+        "-O2",
+        "-mminimal-toc"
+      ],
+      "callees": [
+        "sub_98AC98"
+      ]
+    },
+    {
+      "function": "wrapper_971A20",
+      "source": "src/text/wrapper_971a20.c",
+      "address": "0x971A20",
+      "extent": "0x971A20 .. 0x971A44",
+      "bytes": 36,
+      "flags": [
+        "-O2",
+        "-mminimal-toc"
+      ],
+      "callees": [
+        "sub_98ADB8"
+      ]
+    },
+    {
+      "function": "wrapper_975830",
+      "source": "src/text/wrapper_975830.c",
+      "address": "0x975830",
+      "extent": "0x975830 .. 0x975854",
+      "bytes": 36,
+      "flags": [
+        "-O2",
+        "-mminimal-toc"
+      ],
+      "callees": [
+        "sub_989C68"
+      ]
+    },
+    {
+      "function": "wrapper_976378",
+      "source": "src/text/wrapper_976378.c",
+      "address": "0x976378",
+      "extent": "0x976378 .. 0x97639C",
+      "bytes": 36,
+      "flags": [
+        "-O2",
+        "-mminimal-toc"
+      ],
+      "callees": [
+        "sub_982FC0"
+      ]
+    },
+    {
+      "function": "wrapper_980858",
+      "source": "src/text/wrapper_980858.c",
+      "address": "0x980858",
+      "extent": "0x980858 .. 0x98087C",
+      "bytes": 36,
+      "flags": [
+        "-O2",
+        "-mminimal-toc"
+      ],
+      "callees": [
+        "sub_9080C0"
+      ]
+    },
+    {
+      "function": "wrapper_985ED0",
+      "source": "src/text/wrapper_985ed0.c",
+      "address": "0x985ED0",
+      "extent": "0x985ED0 .. 0x985EF4",
+      "bytes": 36,
+      "flags": [
+        "-O2",
+        "-mminimal-toc"
+      ],
+      "callees": [
+        "sub_98B5D0"
+      ]
+    },
+    {
+      "function": "wrapper_9E60F0",
+      "source": "src/text/wrapper_9e60f0.c",
+      "address": "0x9E60F0",
+      "extent": "0x9E60F0 .. 0x9E6114",
+      "bytes": 36,
+      "flags": [
+        "-O2"
+      ],
+      "callees": [
+        "sub_9E5440"
+      ]
+    },
+    {
+      "function": "wrapper_9E6118",
+      "source": "src/text/wrapper_9e6118.c",
+      "address": "0x9E6118",
+      "extent": "0x9E6118 .. 0x9E613C",
+      "bytes": 36,
+      "flags": [
+        "-O2"
+      ],
+      "callees": [
+        "sub_9E5440"
+      ]
+    },
+    {
+      "function": "wrapper_9E6140",
+      "source": "src/text/wrapper_9e6140.c",
+      "address": "0x9E6140",
+      "extent": "0x9E6140 .. 0x9E6164",
+      "bytes": 36,
+      "flags": [
+        "-O2"
+      ],
+      "callees": [
+        "sub_9E5440"
+      ]
     }
   ],
   "body_gate": "open for the functions listed above; closed for everything else"

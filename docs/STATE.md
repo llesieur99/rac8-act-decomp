@@ -15,7 +15,7 @@
 | the third method (the flow, not the opening) | **done**: 100 % precise and 91.4 % recalled against the descriptor, where the two cheap methods reach 24 % |
 | the compiler | **identified and built**: SCEI PPC GCC 4.1.1 (SDK270), compiled from its own sources ([COMPILER.md](COMPILER.md)) |
 | the first byte-exact body | **done**: `module_init` at 0x10200, 44 bytes reproduced ([src/text/module_init.c](../src/text/module_init.c)) |
-| three more byte-exact bodies | **done**: 0x6FA4F8, 0x6FA6D0 (72 bytes each) and 0x6E1C78 (80 bytes) |
+| twenty-five more byte-exact bodies | **done**: the one-line wrappers of the linked modules, 36 to 40 bytes each ([src/text/](../src/text/)) |
 | the other readings | in progress: three functions are a few bytes away |
 | a qualified PPU compiler and its options | **per link unit**: `-O1` reproduces the first function, `-O2` the three others; the options belong to the source hypothesis |
 | the same engine in other games | **done**: the matched function is in Jak 2, Jak 3 and Jak and Daxter, at the same address ([CROSS-GAME.md](CROSS-GAME.md)) |
@@ -60,6 +60,7 @@ With the SDK's compiler and `-mno-save-restore-tocbase`:
 | `module_link_6FA4F8` | `0x6FA4F8` | 72 | `-O2` | **match** |
 | `module_link_6FA6D0` | `0x6FA6D0` | 72 | `-O2` | **match** |
 | `float_to_short_6E1C78` | `0x6E1C78` | 80 | `-O2` | **match** |
+| 25 wrappers of the linked modules | `0x719CA0` … | 36–40 | `-O2` | **match** (25) |
 | `construct_local_buffer` | `0x25D98` | — | `-O1` | matches up to the fifth byte; the frame and the layout agree |
 | `call_with_49_and_1` | `0x10854` | — | `-O1` | matches up to the third byte; the retail frame is 0x10 larger |
 | `read_global_and_call` | `0x3B704` | — | `-O1` | matches up to the first byte |

@@ -179,6 +179,41 @@ that holds the function at `0x10200` was built with the option, and the
 file that holds the function at `0x10378` was not.  Qualifying the build
 means qualifying it *file by file*.
 
+### The delay slot of a call that leaves the module
+
+The SDK's linker ships a fix-up tool, `ppu-lv2-prx-fixup`, that the
+public toolchain sources do not carry.  What it does was measured on the
+retail executable: it visits every `bl` whose target is **outside** the
+module's descriptor — every call that leaves the module — and replaces the
+`nop` the compiler put in the branch's delay slot with
+`ld r2, 0x28(r1)`, which restores the TOC base from the caller's frame.
+
+Of the **161,564** calls that leave the module, **999** carry that
+instruction, and every one of them follows a call the descriptor does not
+name.  The three exceptions the rule cannot see are the calls to the
+module's own entry point, which is not exported, and the calls to the
+stub area.
+
+`tools/ppu_prx.py` does the fix-up, and applying it to the retail
+executable reproduces it byte for byte.
+
+## The model the compiler works in
+
+Three properties of the SDK's code generation were measured while
+reproducing the target's functions:
+
+* **the model is ILP32**: pointers are 32 bits — every narrowing is a
+  `clrldi` — while `long` is 64 bits, so an `int` passed to a `long`
+  parameter produces an `extsw`; an `unsigned int` passed to a `long`
+  produces one as well, and an `int` does not.  That is what forces the
+  type of a parameter in a candidate;
+* **an address-taken parameter is copied into the parameter area** at
+  `SP + 0x30` and read back on the way out;
+* **`-mminimal-toc` changes the frame**: 0x80 bytes instead of 0x70, and
+  the link register goes to the ABI slot of the *caller's* frame.  The
+  options are not interchangeable — a function with a 0x70-byte frame
+  needs the default TOC and forbids `-mminimal-toc`.
+
 ## The link register's register
 
 The SDK's prologue moves the link register into a general register before
