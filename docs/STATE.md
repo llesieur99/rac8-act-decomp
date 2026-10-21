@@ -20,6 +20,8 @@
 | a qualified PPU compiler and its options | **per link unit**: `-O1` reproduces the first function, `-O2` the three others; the options belong to the source hypothesis |
 | the same engine in other games | **done**: the matched function is in Jak 2, Jak 3 and Jak and Daxter, at the same address ([CROSS-GAME.md](CROSS-GAME.md)) |
 | a second SDK's toolchain | **done**: SDK 3.6.0 built from its own sources; the same source matches 44 of 44 bytes in Jak 3 and in Jak 2 |
+| the globals | **done**: 5,032 of them, and the structure of the TOC ([GLOBALS.md](GLOBALS.md)) |
+| the naming | **done**: the method is published, with three names checked end to end ([NAMING.md](NAMING.md)) |
 
 ## The measured facts
 
