@@ -1,0 +1,234 @@
+The TOC and the negative displacements.
+
+The five files this patch touches - gcc/config/rs6000/rs6000.c,
+gcc/config/rs6000/rs6000.h, gcc/config/rs6000/rs6000.opt,
+gcc/tree-ssa-address.c and gcc/expr.c - are upstream GNU Compiler
+Collection, and each carries the Free Software Foundation's notice:
+
+    This file is part of GCC.  GCC is free software; you can redistribute
+    it and/or modify it under the terms of the GNU General Public License
+    as published by the Free Software Foundation; either version 2, or (at
+    your option) any later version.
+
+A modification of a GPL file is under the GPL, so this patch is published
+under the same terms, with the notices kept.  It touches no file that Sony
+added to GCC, and quotes no SDK header, library or sample.  See
+patches/README.md for what it does and what it buys.
+The TOC and the negative displacements.
+
+The five files this patch touches - gcc/config/rs6000/rs6000.c,
+gcc/config/rs6000/rs6000.h, gcc/config/rs6000/rs6000.opt,
+gcc/tree-ssa-address.c and gcc/expr.c - are upstream GNU Compiler
+Collection, and each carries the Free Software Foundation's notice:
+
+    This file is part of GCC.  GCC is free software; you can redistribute
+    it and/or modify it under the terms of the GNU General Public License
+    as published by the Free Software Foundation; either version 2, or (at
+    your option) any later version.
+
+A modification of a GPL file is under the GPL, so this patch is published
+under the same terms, with the notices kept.  It touches no file that Sony
+added to GCC, and quotes no SDK header, library or sample.  See
+patches/README.md for what it does and what it buys.
+--- a/gcc/config/rs6000/rs6000.c
++++ b/gcc/config/rs6000/rs6000.c
+@@ -3242,7 +3242,7 @@
+ bool
+ rs6000_legitimate_offset_address_p (enum machine_mode mode, rtx x, int strict)
+ {
+-  unsigned HOST_WIDE_INT offset, extra;
++  HOST_WIDE_INT offset, extra;
+ 
+   if (GET_CODE (x) != PLUS)
+     return false;
+@@ -3308,8 +3308,26 @@
+       break;
+     }
+ 
+-  offset += 0x8000;
+-  return (offset < 0x10000) && (offset + extra < 0x10000);
++  /* The displacement of a D-form instruction is a signed 16 bit
++     quantity, so it has to be tested as a signed value.  Tested as an
++     unsigned one, a negative displacement (0xfffff000 for -4096) looks
++     like a huge positive offset and is rejected; the SDK's compiler
++     then computes the address in 64 bits and truncates it to 32 bits
++     (an "addi" and a "clrldi"), where the retail's compiler folds the
++     displacement into the instruction itself.  -mps3-neg-disp selects
++     the retail's behaviour.  */
++  if (ps3_neg_disp)
++    {
++      offset += 0x8000;
++      return (offset >= 0 && offset < 0x10000) && (offset + extra < 0x10000);
++    }
++
++  {
++    unsigned HOST_WIDE_INT uoffset = (unsigned HOST_WIDE_INT) offset;
++
++    uoffset += 0x8000;
++    return (uoffset < 0x10000) && (uoffset + extra < 0x10000);
++  }
+ }
+ 
+ static bool
+@@ -4209,7 +4227,7 @@
+       = call_used_regs[RS6000_PIC_OFFSET_TABLE_REGNUM]
+       = call_really_used_regs[RS6000_PIC_OFFSET_TABLE_REGNUM] = 1;
+ 
+-  if (TARGET_TOC && TARGET_MINIMAL_TOC)
++  if (TARGET_TOC && TARGET_MINIMAL_TOC && ! ps3_toc_direct)
+     fixed_regs[RS6000_PIC_OFFSET_TABLE_REGNUM]
+       = call_used_regs[RS6000_PIC_OFFSET_TABLE_REGNUM] = 1;
+ 
+@@ -13851,7 +13869,8 @@
+ 	    || (first_reg == RS6000_PIC_OFFSET_TABLE_REGNUM
+ 		&& ((DEFAULT_ABI == ABI_V4 && flag_pic != 0)
+ 		    || (DEFAULT_ABI == ABI_DARWIN && flag_pic)
+-		    || (TARGET_TOC && TARGET_MINIMAL_TOC)))))
++		    || (TARGET_TOC && TARGET_MINIMAL_TOC
++			&& ! ps3_toc_direct)))))
+       break;
+ 
+ #if TARGET_MACHO
+@@ -16196,7 +16215,8 @@
+     }
+ 
+   /* If we are using RS6000_PIC_OFFSET_TABLE_REGNUM, we need to set it up.  */
+-  if ((TARGET_TOC && TARGET_MINIMAL_TOC && get_pool_size () != 0)
++  if ((TARGET_TOC && TARGET_MINIMAL_TOC && ! ps3_toc_direct
++       && get_pool_size () != 0)
+       || (DEFAULT_ABI == ABI_V4
+ 	  && (flag_pic == 1 || (flag_pic && TARGET_SECURE_PLT))
+ 	  && regs_ever_live[RS6000_PIC_OFFSET_TABLE_REGNUM]))
+--- a/gcc/config/rs6000/rs6000.h
++++ b/gcc/config/rs6000/rs6000.h
+@@ -1866,7 +1866,16 @@
+ #define RS6000_PIC_OFFSET_TABLE_REGNUM 30
+ #define PIC_OFFSET_TABLE_REGNUM (flag_pic ? RS6000_PIC_OFFSET_TABLE_REGNUM : INVALID_REGNUM)
+ 
+-#define TOC_REGISTER (TARGET_MINIMAL_TOC ? RS6000_PIC_OFFSET_TABLE_REGNUM : 2)
++/* The register the TOC entries are addressed from.  In the minimal TOC
++   mode the SDK's compiler copies the TOC base into r30 and addresses
++   the entries from that copy, so that a TOC entry takes two
++   instructions to read; the retail's compiler addresses them from r2
++   directly, so that one instruction reads them, and r30 stays
++   available for the general purpose registers.  -mps3-toc-direct
++   selects the retail's behaviour.  */
++
++#define TOC_REGISTER ((TARGET_MINIMAL_TOC && ! ps3_toc_direct) \
++		     ? RS6000_PIC_OFFSET_TABLE_REGNUM : 2)
+ 
+ /* Define this macro if the register defined by
+    `PIC_OFFSET_TABLE_REGNUM' is clobbered by calls.  Do not define
+--- a/gcc/config/rs6000/rs6000.opt
++++ b/gcc/config/rs6000/rs6000.opt
+@@ -298,3 +298,25 @@
+ Target RejectNegative Joined UInteger Var(rs6000_save_restore_funcs)
+ Call functions to save and restore registers when it decreases the size of a function by N or more instructions
+ 
++; The register the TOC entries are addressed from in the minimal TOC
++; mode.  The SDK's compiler copies the TOC base into r30 and addresses
++; the entries from that copy, so that reading a TOC entry takes two
++; instructions ("lwz r30, .LCTOC0@toc(2)" then "lwz rX, off(r30)").
++; The retail's compiler addresses the entries from r2 directly, so that
++; one instruction reads them ("lwz r30, off(r2)"), and r30 stays
++; available for the general purpose registers.
++mps3-toc-direct
++Target Var(ps3_toc_direct) Init(0)
++Address the TOC entries from r2 in the minimal TOC mode
++
++; The negative displacements of the loads and the stores.  The
++; displacement of a D-form instruction is a signed 16 bit quantity, but
++; the SDK's compiler tests it as an unsigned one: a negative
++; displacement is then rejected, the address is computed in 64 bits and
++; truncated to 32 bits (an "addi" and a "clrldi"), where the retail's
++; compiler folds the displacement into the instruction itself ("lwz rX,
++; -0x7fec(r30)").
++mps3-neg-disp
++Target Var(ps3_neg_disp) Init(0)
++Fold a negative displacement into the load or the store
++
+--- a/gcc/tree-ssa-address.c
++++ b/gcc/tree-ssa-address.c
+@@ -225,15 +225,38 @@
+     st = NULL_RTX;
+ 
+   if (addr->offset && !integer_zerop (addr->offset))
++    {
+ /* CELL LOCAL Begin */
+ #ifdef POINTERS_EXTEND_UNSIGNED
+-    off = immed_double_const (TREE_INT_CST_LOW (addr->offset),
+-			      TREE_INT_CST_HIGH (addr->offset), ptr_mode);
++      enum machine_mode off_mode = ptr_mode;
+ #else
+-    off = immed_double_const (TREE_INT_CST_LOW (addr->offset),
+-			      TREE_INT_CST_HIGH (addr->offset), Pmode);
+ /* CELL LOCAL End */
++      enum machine_mode off_mode = Pmode;
++/* CELL LOCAL End */
+ #endif /* CELL LOCAL */
++
++      /* The offset is a pointer-sized quantity, and it is signed: build
++	 the constant with the sign it has in that size.  immed_double_const
++	 keeps only the low word of a 64 bit constant, so a negative
++	 offset is read as a huge positive one; the address is then not a
++	 legal one for a D-form instruction, and the compiler computes it
++	 in 64 bits and truncates it.  -mps3-neg-disp selects the retail's
++	 behaviour, which folds the displacement into the instruction.  */
++      int width = TYPE_PRECISION (TREE_TYPE (addr->offset));
++
++      if (ps3_neg_disp && width < GET_MODE_BITSIZE (off_mode))
++	{
++	  HOST_WIDE_INT val = TREE_INT_CST_LOW (addr->offset);
++
++	  val &= ((HOST_WIDE_INT) 1 << width) - 1;
++	  if (val & ((HOST_WIDE_INT) 1 << (width - 1)))
++	    val |= -1 << width;
++	  off = gen_int_mode (val, off_mode);
++	}
++      else
++	off = immed_double_const (TREE_INT_CST_LOW (addr->offset),
++				  TREE_INT_CST_HIGH (addr->offset), off_mode);
++    }
+   else
+     off = NULL_RTX;
+ 
+--- a/gcc/expr.c
++++ b/gcc/expr.c
+@@ -8264,6 +8264,37 @@
+ 		op0 = force_operand (op0, target);
+ 	      return REDUCE_BIT_FIELD (op0);
+ 	    }
++	  else if (TREE_CODE (TREE_OPERAND (exp, 1)) == INTEGER_CST
++		   && GET_MODE_BITSIZE (mode) <= HOST_BITS_PER_WIDE_INT
++		   && ps3_neg_disp
++		   && (modifier == EXPAND_SUM || modifier == EXPAND_INITIALIZER))
++	    {
++	      /* A sum of a value and a constant, used as an address.  The
++		 retail's compiler folds the displacement into the
++		 instruction; the SDK's compiler computes the address in 64
++		 bits and truncates it to 32 bits.  -mps3-neg-disp selects
++		 the retail's behaviour.  */
++	      rtx constant_part;
++
++	      op0 = expand_expr (TREE_OPERAND (exp, 0), subtarget, VOIDmode,
++				 (modifier == EXPAND_INITIALIZER
++				  ? EXPAND_INITIALIZER : EXPAND_SUM));
++	      if (! CONSTANT_P (op0))
++		{
++		  /* The constant keeps its sign: a displacement of -4096
++		     is -4096, and not 0xfffff000.  */
++		  tree ctype = TREE_TYPE (TREE_OPERAND (exp, 1));
++		  int width = TYPE_PRECISION (ctype);
++		  HOST_WIDE_INT val = TREE_INT_CST_LOW (TREE_OPERAND (exp, 1));
++
++		  val &= ((HOST_WIDE_INT) 1 << width) - 1;
++		  if (! TYPE_UNSIGNED (ctype)
++		      && (val & ((HOST_WIDE_INT) 1 << (width - 1))))
++		    val |= -1 << width;
++		  constant_part = gen_int_mode (val, mode);
++		  return simplify_gen_binary (PLUS, mode, op0, constant_part);
++		}
++	    }
+ 	}
+ 
+       /* No sense saving up arithmetic to be done

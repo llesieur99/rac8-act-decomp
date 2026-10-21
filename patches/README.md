@@ -110,6 +110,48 @@ condition of the epilogue's reload is written differently, and its option
 file ends differently — so the patch needs its context adjusted.  The
 variant is published next to this one, and applies cleanly.
 
+## `ps3-toc-neg-disp.patch` — the TOC and the negative displacements
+
+Two more rules of the retail's code, both of them in the SDK's compiler:
+
+* **the TOC entry is read in one instruction.**  The SDK's backend copies
+  the base into `r30` in minimal-TOC mode, so reading an entry takes two
+  instructions; the retail addresses the entries from `r2` and reads the
+  value in one.
+* **a negative displacement is folded into the load.**  The D-form's
+  displacement is tested as *unsigned* (`offset += 0x8000; offset < 0x10000`),
+  so `-4096` is rejected and the address is computed in 64 bits and then
+  truncated; a positive offset is folded, a negative one never is.
+
+The patch adds two options, both **off by default**: `-mps3-toc-direct` and
+`-mps3-neg-disp`.  It touches five files of upstream GCC — `rs6000.c`,
+`rs6000.h`, `rs6000.opt`, `tree-ssa-address.c` and `expr.c` — all under the
+GPL, and nothing that Sony added.
+
+### What it buys, and what it does not
+
+The first half works: with `-mps3-toc-direct` the entry is read in one
+instruction from `r2` and `r30` is freed.
+
+The second half is diagnosed but not finished.  The rules are found — the
+D-form's displacement is tested as unsigned, and the sign is also lost
+when the tree layer decomposes a `MEM_REF` address into base and offset,
+because only the low word of a 64-bit constant is kept.  The decomposition
+rule itself is sign-sensitive and is not patched yet, and there is a third
+rule: the PPU's `lwz` zero-extends the register, so the retail needs no
+`clrldi` where the SDK's `POINTERS_EXTEND_UNSIGNED = -1` model demands one.
+
+**The gain is zero, and that is the most useful thing the exercise
+produced.**  Of 18,660 functions that reach the TOC and are not yet
+reproduced, all of a sample of two hundred need *both* fixes — but the
+campaign that searched for them never wrote a source form that *reads a
+global*: its twenty-nine forms read a member **through the argument**, so
+the TOC path was never exercised at all.  Those functions were not one
+instruction away; a source form was missing.  That is invisible without
+writing the patch.
+
+With the patch, all 2,505 byte-exact functions still verify byte for byte.
+
 ## The validation on a second game and a second compiler
 
 The patch was checked on *Tools of Destruction*, the other Insomniac game,
