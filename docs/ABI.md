@@ -90,6 +90,7 @@ Measured over every function of the catalogue of each executable
 | Tools of Destruction | CELL 4.1.2.7 rev 1826 | 48 % | 28 % | 9 % | 5 % | — |
 | Jak 2 | SDK360 rev 3455 | **100 %** | — | — | — | — |
 | Jak 3 | SDK360 rev 3455 | **100 %** | — | — | — | — |
+| Jak and Daxter: The Precursor | SDK360 rev 3455 | **100 %** | — | — | — | — |
 | LittleBigPlanet | SDK310 rev 3320 | **100 %** | — | — | — | — |
 | Uncharted: Drake's Fortune | CELL 4.1.2.7 rev 1826 | **100 %** | — | — | — | — |
 | Assassin's Creed | CELL 4.1.28 rev 1855 | **100 %** | — | — | — | — |
@@ -100,11 +101,40 @@ kept in `r0`.  In the two newest Insomniac games it is spread over `r0`,
 calls something, the register the link register is kept in is the one the
 first argument is passed in.
 
+It is not the age of the engine: *Jak and Daxter: The Precursor* is the
+newest Insomniac engine (the one *Rift Apart* is built on) and it is built
+with the same SDK as *Jak 2* and *Jak 3* — and it keeps the link register
+in `r0` in every function, like they do.  It is not the SDK either: the two
+games that mix the registers were built with two different SDKs, and
+*Uncharted*, built with the same one as *Tools of Destruction*, keeps the
+link register in `r0` in every function.  What is left is the code itself:
+the sources of those two games hold patterns the other games do not.
+
 The rebuilt toolchains do not reproduce the second family: both the SDK
 2.7.0 and the SDK 3.6.0 compiler built here keep the link register in `r0`
 in every case, in C and in C++, at every optimisation level, with and
 without `-mno-save-restore-tocbase`, and with the TOC options
-(`-mminimal-toc`, `-mno-toc`, `-mbase-toc`) turned on and off.
+(`-mminimal-toc`, `-mno-toc`, `-mbase-toc`) turned on and off.  Nor does
+the SDK 2.8.0 branch of the same repository.
+
+And the epilogue says why.  In the compiler's own source, the link
+register is read back into `r0` and nowhere else:
+
+```c
+/* Get the old lr if we saved it.  */
+if (info->lr_save_p && (info->lr_save_inline_p || sibcall))
+  {
+    ...
+    emit_move_insn (gen_rtx_REG (Pmode, 0), mem);
+  }
+```
+
+The retail's epilogues use `r3`, `r4`, `r31` and others — 43 % of the
+target's epilogues do not use `r0`.  Every branch of the public toolchain
+repository (1.8.0, 1.9.0, 2.2.0, 2.4.0, 2.5.0, 2.7.0, 2.8.0, 3.0.0 to 3.7.0
+and 4.2.0) has that same line.  **The compiler that built the target is
+therefore not the one the public sources describe** — the difference is in
+the parts of the SDK's compiler that were never published.
 
 That is the reason three of the readings are stuck (§ *The measurements* in
 [STATE.md](STATE.md)): the bytes agree with the retail ones right up to the
