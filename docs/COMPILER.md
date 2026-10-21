@@ -129,6 +129,14 @@ ppu-lv2-gcc (GCC) 4.1.1 (SDK270, $Rev: 3019 $)
 
 which is the very stamp the retail executable carries.
 
+The target's own runtime comes with it: the build produces the PPU
+`libgcc.a` (499,648 bytes) in the SDK's three multilib variants (the
+default one, `fno-exceptions` and `fno-exceptions/fno-rtti`), which is the
+library the retail executable links against.  The SDK's C++ library is a
+*separate* prebuilt archive that is not part of the toolchain sources, so
+C++ can be compiled to an object file but not linked yet; that does not
+affect the matching, which compares object code.
+
 One flag turned out to matter more than the optimisation level:
 **`-mno-save-restore-tocbase`**.  Without it, the compiler keeps a TOC
 base and a back chain in the frame, which the retail code does not have.

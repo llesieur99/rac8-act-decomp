@@ -4,7 +4,12 @@
     "stamp": "GCC: (GNU) 4.1.1 (SDK270, $Rev: 3019 $)",
     "target": "ppu-lv2",
     "sdk": "PlayStation 3 SDK 2.7.0 (revision 3019)",
-    "status": "identified from the executable's own .comment section"
+    "status": "identified from the executable's own .comment section",
+    "built": {
+      "compiler": "ppu-lv2-gcc",
+      "libgcc": "499,648 bytes, in the SDK's three multilib variants (default, fno-exceptions, fno-exceptions/fno-rtti)",
+      "note": "the SDK's C++ library is a separate prebuilt archive and is not part of the toolchain sources: C++ compiles to an object file but does not link yet"
+    }
   },
   "flags": {
     "status": "provisional: qualified on one function only",
