@@ -65,9 +65,42 @@ access of eight bytes a 64-bit value, a use followed by `extsw` a signed
 integer, and a global that is dereferenced before being used a pointer.
 Twenty-seven globals stay unclassified.
 
-Most of the member offsets are negative — 91 % — which says the pointers
-the game keeps point at the *end* of an object, the way a C++ compiler
-lays out a class with a base at the end.
+**What the pointers point at.**  Most of the member accesses do not go
+through the module's own globals at all: **1,910 globals** point at the
+*small-data window of one of the 468 linked PRX modules**, and those are
+what the negative offsets are — the windows of the other modules, not
+inverted pointers.  On the objects the module does own, the offsets are
+**98.1 % positive**, and the pointer sits at the *start* of the object in
+29 % of the cases: an ordinary C++ `this`.
+
+The earlier reading of these numbers — that the pointers aimed at the end
+of an object, as a class with a base at the end would — was wrong, and the
+correction is what makes the structures below readable at all.
+
+## The structures
+
+From the member accesses, **137 structures** were reconstructed, with
+**4,942 typed fields**, and 336 globals were recognised as pointing at an
+object.  The reconstruction groups the accesses by the type deduced for
+the base, and the fields by their offset.
+
+**The newer build's type information cannot name them.**  The RTTI of the
+PlayStation 5's build carries the class name, the virtual functions, the
+vtable offset and the base classes — but *not* the size: the `BV` prefix
+of a mangled name is a reference marker, and the metadata holds no size
+field.  A "the size matches, so it is this class" deduction is therefore
+impossible, and the identification has to be made on the geometry of the
+vtable instead: the number of virtual functions, the offset of the table
+and the base classes.  That matching is exact when it applies — it named
+one structure of the target outright — but it applies to few.
+
+Three structures were named by the build itself, through its own messages:
+the cache and its decompressor, and the job scheduler.
+
+**And the two builds' vocabularies are disjoint.**  The eight class names
+the PS3 build prints itself do not exist in the newer build's vocabulary
+at all: the two are a generation apart.  The newer type information can
+*constrain* the older structures; it cannot name them.
 
 ## The dispatch tables
 

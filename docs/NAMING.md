@@ -37,8 +37,8 @@ dozens of methods at once.
 
 The PlayStation 5's build of the same engine carries its C++ type
 information, and the RTTI section holds **14,085 class names**.  They
-describe the *newer* engine, though, and the measurement below says how
-far they can be carried over.
+describe the *newer* engine, though, and two measurements say how far they
+can be carried over — see *A correction* below.
 
 ### The strings themselves
 
@@ -127,8 +127,18 @@ globals they touch, and a signature is what a candidate needs.
 The class names of the PlayStation 5's build are **not** a dictionary for
 the PlayStation 3's.  Of the 9,511 entities the PS3 binary names, only
 **three** exist in the newer build's RTTI: the two are a generation apart,
-and the names moved.  The newer RTTI describes the shape of the newer
-engine, and it is useful for that; it does not name the older code.
+and the names moved.  The eight class names the PS3 build prints itself
+do not exist in the newer vocabulary at all.
+
+The newer type information can still *constrain* the older structures — it
+carries the virtual functions, the vtable offset and the base classes —
+but it cannot name them, and it does not even carry their size: the
+mangled name's prefix is a reference marker, not a size, and the
+metadata holds no size field.
+
+So the names come from the build itself: the messages it prints, the
+globals it names and the modules it links.  The newer build's type
+information is a constraint on that, not a source of names.
 
 ## The publishable form
 
