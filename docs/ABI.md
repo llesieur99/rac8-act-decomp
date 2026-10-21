@@ -137,9 +137,28 @@ The rebuilt toolchains do not reproduce the second family: both the SDK
 in every case, in C and in C++, at every optimisation level, with and
 without `-mno-save-restore-tocbase`, and with the TOC options
 (`-mminimal-toc`, `-mno-toc`, `-mbase-toc`) turned on and off.  Nor does
-the SDK 2.8.0 branch of the same repository.
+the SDK 2.8.0 or the SDK 4.2.0 branch of the same repository.
 
-And the epilogue says why.  In the compiler's own source, the link
+### The proof: the same source, two compilers, two choices
+
+*A Crack in Time* and *Tools of Destruction* share large blocks of code —
+the studio's third-party libraries and its engine module — which the
+signature search finds across the two executables.  In those blocks, the
+same source is compiled by two different compilers, and the two builds do
+not choose the same register:
+
+| Shared block | A Crack in Time (SDK270) | Tools of Destruction (CELL 4.1.2.7) |
+|---|---|---|
+| the third-party library | r5 48 %, r0 37 %, r6 5 % | **r0 100 %** |
+| the engine module | r0 51 %, r5 15 %, r4 13 % | **r0 99 %** |
+
+The choice follows the compiler, not the source: the same code, compiled
+twice, keeps the link register in `r0` in one build and spreads it in the
+other.  And since the compiler built here always chooses `r0`, **the
+compiler that built the target is not the one the public sources
+describe**.
+
+The epilogue says where the difference is.  In the compiler's own source, the link
 register is read back into `r0` and nowhere else:
 
 ```c
@@ -169,12 +188,9 @@ The `CELL 4.1.2.7` wording belongs to the PlayStation 4's compiler, and
 the repository stops at the PlayStation 3's SDKs (3.7.0 is the last one
 before it, and it stamps `SDK370 rev 3509`).  So the two games that mix the
 registers are the two whose compiler's register allocation was never
-published, and the games whose compiler *was* published — Jak 2, Jak 3,
-Jak and Daxter, LittleBigPlanet, Uncharted, Assassin's Creed — keep the
+published, and the games whose compiler *was* published - Jak 2, Jak 3,
+Jak and Daxter, LittleBigPlanet, Uncharted, Assassin's Creed - keep the
 link register in `r0` in every single function.
-
-That is the clearest statement the measurements support: **the difference
-is the compiler, not the code, and not the SDK.**
 
 That is the reason three of the readings are stuck (§ *The measurements* in
 [STATE.md](STATE.md)): the bytes agree with the retail ones right up to the

@@ -39,7 +39,7 @@ somewhere else in each build.
 Tools of Destruction no longer has that function: the engine was rewritten
 between the two games, so it is a different program at that address.
 
-## The same source, three builds
+## The same source, four builds
 
 The point of building the second toolchain is that it makes the check
 independent.  The source of `module_init` was compiled with the SDK 3.6.0
@@ -91,6 +91,40 @@ This is what turned the first byte-exact body into a cross-check: the 44
 bytes reproduced from source in A Crack in Time are the same 44 bytes that
 Jak 2 and Jak 3 carry, so the source is not a coincidence that happens to
 fit one build.
+
+## The shared code of the two Insomniac games
+
+*A Crack in Time* and *Tools of Destruction* are the same studio's engine,
+one generation apart, and the signature search finds **3.19 %** of the
+target's functions in the other game: 721 matches over 22 592 functions.
+The matches are not spread out — they form blocks:
+
+| Shared block | In A Crack in Time | In Tools of Destruction |
+|---|---|---|
+| the third-party library | `0x8F32E0` – `0x925F78` | `0x83F348` – `0x85FC88` |
+| the engine module | `0x6DB0AC` – `0x6E6738` | `0x6EE0D0` – `0x6FCC44` |
+
+Inside those blocks the two builds agree on the *structure* — on twenty
+pairs, 73.8 % of the instructions are identical byte for byte, and some
+pairs run for 258 instructions without a difference — but not on the
+registers.  That is what the [link register's register](ABI.md) section is
+about, and it is measured on this shared code: **the same source,
+compiled by two compilers, keeps the link register in `r0` in one build
+and spreads it in the other.**
+
+The initialisation function of the engine is in both games, at `0x10200`
+in the target and at `0x10210` in the older one — the same frame, the
+same two calls, the same epilogue.  Only one thing differs: the older
+game uses the delay slot of its second call to restore the TOC base
+(`ld r2, 0x28(r1)`) where the target has a `nop`.  The older game also
+stacks 1,036 four-instruction stubs (`std r2, 0x28(r1)` / `addis` /
+`addi` / `b`) between `0x10280` and `0x14330` to register the routines,
+where the target calls the registration routine directly.
+
+**What that means for the project:** the older game's code is a *reading*
+of the same engine, compiled by a compiler whose behaviour the public
+sources reproduce.  It is the closest thing to a reference for what the
+engine does, and the naming work has a second source to work from.
 
 ## The PlayStation 4 was looked at, and there is nothing to read
 
