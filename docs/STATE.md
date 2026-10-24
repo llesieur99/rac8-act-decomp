@@ -111,8 +111,9 @@ The three readings are the register, and that difference is explained in
 [COMPILER.md](COMPILER.md): `-mps3-lr-reg` reproduces the retail register,
 and the allocator's own choice cannot be recovered from these sources.
 What still separates a candidate that reads a global from the retail
-bytes is where the save is issued.  That is measured in
-[ABI.md](ABI.md) (*Where the link register's save lands*).
+bytes is where the save is issued.  `-mps3-prologue-barrier` places it
+where the retail does.  The option is off by default, and the measurement
+is in [ABI.md](ABI.md) (*Where the link register's save lands*).
 
 ## What the measurements taught about the ABI
 
@@ -133,16 +134,18 @@ function.
 
 ## The next step
 
-1. Give the prologue barrier its own instruction pattern, of a type other
-   than `integer`, `load` or `load_ext`, still off by default.  The hoist,
-   the alias set and the CELL integer-to-load bypass are measured in
-   [ABI.md](ABI.md) (*Where the link register's save lands*).  Then re-run
-   the 2,505 with the option off: the four samples already match the
-   compiler that produced them.
-2. Work the catalogue from the top: the functions whose behaviour the
+The prologue barrier is published
+(`patches/ps3-prologue-barrier.patch`).  `-mps3-prologue-barrier` is off
+by default.  With the option off, the assembly of all 2,514 sources in
+`src/text/` matches the compiler that produced the byte-exact matches.
+The retail executable was not re-linked for that check.  Still open on
+this mechanism: a dedicated alias set for the link-register slot, and the
+late non-CELL stack allocation, which has no barrier.
+
+1. Work the catalogue from the top: the functions whose behaviour the
    analysis makes clear, one at a time, each one ending in a comparison.
-3. Qualify the flags on more than one function, so that
+2. Qualify the flags on more than one function, so that
    `config/compiler.json` stops being provisional.
-4. Extend the cross-game check: the same source, the same options and the
+3. Extend the cross-game check: the same source, the same options and the
    same bytes in three games already; the next check is a function that is
    *not* the engine's initialisation.

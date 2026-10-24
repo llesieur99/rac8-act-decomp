@@ -425,8 +425,10 @@ the distance between the store and the first call is spread from one
 instruction to twenty, so this is not a save that waits for the link
 register to be needed.
 
-What remains is the scheduler.  Three mechanisms were measured on the
+The cause is the scheduler.  Three mechanisms were measured on the
 SDK 2.7.0 compiler at `-O2`, with the link register kept in `r5`.
+`patches/ps3-prologue-barrier.patch` publishes them.  The option is off
+by default.
 
 **The hoist.**  A load of the TOC does not use the stack, so the second
 scheduling pass moves it *before* the `stdu`.  The `mflr` follows it,
@@ -434,8 +436,8 @@ and ends up before the `stdu` as well.  The retail never does either:
 the `stdu` is first and the `mflr` is second in 21,801 of 21,824
 functions.  Grouping the `mflr` with the `stdu` and placing a barrier
 after that pair stops the hoist.  With that barrier switched off, the
-same four functions compile to the same bytes as the compiler that
-produced the 2,505 matches.  The catalogue itself was not re-run.
+same four functions compile to the same assembly as the compiler that
+produced the matches.
 
 **The alias set.**  The store of the link register is emitted in alias
 set 0, which conflicts with every memory operation whose address is not
@@ -482,11 +484,30 @@ load waits 5 cycles on the first by the same bypass (`cell-load` to
 The frame-related flag plays no part in any of the three.  The
 scheduler never reads it.
 
-The barrier is off by default and is not published.  The one that
-reproduces the order above emits no instruction.  What is left is an
-instruction pattern of its own, of a type other than `integer`, `load`
-or `load_ext`, so the 5-cycle bypass cannot apply, and a re-run of the
-2,505 with the option off.
+The published barrier is its own instruction pattern,
+`ps3_prologue_block`.  It is an `unspec_volatile` the recognizer does
+not match as `blockage`.  Its type is `mtcr`: one cycle, on
+`fxu_sim_cell`, and not a producer of the integer-to-load bypass.  The
+template is empty, and the length is 0, so branch shortening does not
+count a byte that is not emitted.  `gen_blockage` is unchanged: the
+exception return and an untyped call still use it.
+
+With `-mps3-prologue-barrier` the `mflr` is grouped with the stack
+update and the barrier is emitted immediately after that pair.  The
+store of the link register uses `rs6000_sr_alias_set` only while the
+option is on.  In the sched2 log of the function above, the barrier is
+issued at cycle 2, the TOC load and the `addi` together at cycle 3, and
+the store at cycle 4.  The schedule's total time is 19.  The load is
+not queued for 5 cycles.
+
+With the option off, the assembly of all 2,514 sources in `src/text/`
+matches the compiler that produced the byte-exact matches.  2,513 were
+compiled as C.  `call_with_49_and_1.c` is C++ and was compiled with the
+C++ driver; its assembly matches as well.  The comparison is assembly.
+The retail executable was not re-linked for it, and the option was not
+passed.  The rebuilt compiler used for that comparison still carries the
+reverted link-register sink, which this patch does not publish.  On this
+catalogue that sink changed no assembly.
 
 ## The epilogue's two shapes
 

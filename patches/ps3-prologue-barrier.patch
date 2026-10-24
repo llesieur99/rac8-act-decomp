@@ -1,0 +1,127 @@
+The prologue barrier.
+
+The retail keeps the stack update first and the mflr second, and it saves
+the link register deeper in the body.  Three mechanisms were measured;
+they are written up in docs/ABI.md.  This patch publishes the barrier
+that reproduces that order.  The option is off by default.
+
+gen_blockage is type integer.  On CELL a true dependence from
+cell-integer to cell-load costs 5 cycles, with no guard, so a load stays
+queued while the store of the link register becomes ready.  The pattern
+below is not that type.  It is an unspec_volatile the recognizer does not
+match as "blockage".  Its type is mtcr: one cycle, on fxu_sim_cell, and
+not a producer of that bypass.  The template is empty, and the length is
+0 so branch shortening does not count a byte that is not emitted.
+
+With -mps3-prologue-barrier the mflr is grouped with the stack update,
+the barrier is emitted immediately after that pair, and the store of the
+link register uses rs6000_sr_alias_set, the set the epilogue already uses
+to reload the slot.  Off, none of that happens.
+
+Measured with the option on, on a function that adds one to its argument
+and passes a global:
+
+    stdu 1,-112(1)
+    mflr 5
+    lwz  9,.LC0@toc(2)
+    addi 3,3,1
+    std  5,128(1)
+
+In the sched2 log the barrier is issued at cycle 2 on fxu_sim_cell, the
+TOC load and the addi together at cycle 3, and the store at cycle 4.
+The load is not queued for 5 cycles.
+
+The three files this patch touches - gcc/config/rs6000/rs6000.c,
+gcc/config/rs6000/rs6000.md and gcc/config/rs6000/rs6000.opt - are
+upstream GNU Compiler Collection, and each carries the Free Software
+Foundation's notice:
+
+    This file is part of GCC.  GCC is free software; you can redistribute
+    it and/or modify it under the terms of the GNU General Public License
+    as published by the Free Software Foundation; either version 2, or (at
+    your option) any later version.
+
+A modification of a GPL file is under the GPL, so this patch is published
+under the same terms, with the notices kept.  It touches no file that Sony
+added to GCC, and quotes no SDK header, library or sample.  See
+patches/README.md for what it does.  Apply it after ps3-lr-reg.patch,
+ps3-toc-neg-disp.patch and ps3-neg-disp-completion.patch.
+diff --git a/gcc/config/rs6000/rs6000.c b/gcc/config/rs6000/rs6000.c
+index 8c8f594..5b36b31 100644
+--- a/gcc/config/rs6000/rs6000.c
++++ b/gcc/config/rs6000/rs6000.c
+@@ -15854,6 +15854,17 @@ rs6000_emit_prologue (void)
+       insn = emit_move_insn (gen_rtx_REG (Pmode, ps3_lr_reg),
+ 			     gen_rtx_REG (Pmode, LINK_REGISTER_REGNUM));
+       RTX_FRAME_RELATED_P (insn) = 1;
++      /* Group the mflr with the stack update, then stop the scheduler
++	 from moving anything else above that pair.  gen_blockage is type
++	 integer, and on CELL a true dependence from cell-integer to a load
++	 costs 5 cycles, so the load would stay queued while the store of
++	 the link register became ready.  This barrier is not that type.
++	 The save itself stays after it.  Off by default.  */
++      if (ps3_prologue_barrier)
++	{
++	  SCHED_GROUP_P (insn) = 1;
++	  emit_insn (gen_ps3_prologue_block ());
++	}
+     }
+ 
+   /* Call a function to save GPRs.  Sometimes this needs r12 so do it
+@@ -16114,8 +16125,14 @@ rs6000_emit_prologue (void)
+ 			       GEN_INT (offset));
+       rtx reg = gen_rtx_REG (Pmode, ps3_lr_reg);
+       rtx mem = gen_rtx_MEM (Pmode, addr);
+-      /* This should not be of rs6000_sr_alias_set, because of
+-	 __builtin_return_address.  */
++      /* Alias set 0 conflicts with every load, so the store cannot
++	 sink past a load whose address is not a known distinct base.  The
++	 epilogue already reads the slot with rs6000_sr_alias_set.  The
++	 option gives the store that set; off, the set stays 0.  A count of
++	 zero for __builtin_return_address reads the hard register, and a
++	 higher count uses alias set 0, which still conflicts with this.  */
++      if (ps3_prologue_barrier)
++	set_mem_alias_set (mem, rs6000_sr_alias_set);
+ 
+       insn = emit_move_insn (mem, reg);
+       rs6000_frame_related (insn, frame_ptr_rtx, info->total_size,
+diff --git a/gcc/config/rs6000/rs6000.md b/gcc/config/rs6000/rs6000.md
+index 79d3c69..1c2260f 100644
+--- a/gcc/config/rs6000/rs6000.md
++++ b/gcc/config/rs6000/rs6000.md
+@@ -11427,6 +11427,19 @@
+       DONE;
+ }")
+ 
++;; A scheduling barrier that is not type integer.  gen_blockage is, and
++;; on CELL a true dependence from cell-integer to cell-load costs 5
++;; cycles, so a load stays queued while a store becomes ready.  Type mtcr
++;; has a one-cycle reservation and is not a producer of that bypass.  The
++;; template is empty, and the length is 0 so branch shortening does not
++;; count a byte that is not emitted.
++(define_insn "ps3_prologue_block"
++  [(unspec_volatile [(const_int 1)] UNSPECV_BLOCK)]
++  ""
++  ""
++  [(set_attr "type" "mtcr")
++   (set_attr "length" "0")])
++
+ ;; UNSPEC_VOLATILE is considered to use and clobber all hard registers and
+ ;; all of memory.  This blocks insns from being moved across this point.
+ 
+diff --git a/gcc/config/rs6000/rs6000.opt b/gcc/config/rs6000/rs6000.opt
+index f20e7f0..9966830 100644
+--- a/gcc/config/rs6000/rs6000.opt
++++ b/gcc/config/rs6000/rs6000.opt
+@@ -325,3 +325,11 @@ Read the entry of the TOC in one instruction, from r2.
+ mps3-neg-disp
+ Target Var(ps3_neg_disp) Init(0)
+ Fold a negative displacement into the load.
++
++; Do not schedule a body instruction before the stack update, and give
++; the save of the link register the alias set of the epilogue, so the
++; store can sink into the body.  Off by default: the functions matched
++; without the option must keep matching.
++mps3-prologue-barrier
++Target Var(ps3_prologue_barrier) Init(0)
++Do not schedule instructions before the stack update.
