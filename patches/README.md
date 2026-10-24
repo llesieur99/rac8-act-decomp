@@ -189,6 +189,36 @@ Two facts came out of the exercise:
   cannot produce the restoration of the TOC base — a difference between
   the two SDKs' ABIs, not a difference of register.
 
+## `ps3-prologue-barrier.patch` — where the save of the link register lands
+
+The retail keeps the stack update first and the `mflr` second, and it
+saves the link register deeper in the body.  The scheduler of the SDK's
+compiler does not.  The measurement is in
+[docs/ABI.md](../docs/ABI.md) (*Where the link register's save lands*).
+
+`gen_blockage` is type `integer`.  On CELL a true dependence from
+`cell-integer` to `cell-load` costs 5 cycles, with no guard, so a load
+stays queued while the store of the link register becomes ready.  This
+patch adds a barrier that is not that type: an empty `unspec_volatile`,
+type `mtcr`, length 0.  It emits nothing, and branch shortening does not
+count a byte that was not emitted.
+
+`-mps3-prologue-barrier` groups the `mflr` with the stack update, emits
+the barrier after that pair, and gives the store of the link register
+`rs6000_sr_alias_set`, the set the epilogue already uses to reload the
+slot.  The option is **off by default**.  Without it, the alias set stays
+0 and no barrier is emitted, so a function matched without the option
+keeps matching.
+
+The patch touches three upstream GCC files — `rs6000.c`, `rs6000.md` and
+`rs6000.opt` — and nothing Sony added.  It applies after
+`ps3-lr-reg.patch`, `ps3-toc-neg-disp.patch` and
+`ps3-neg-disp-completion.patch`:
+
+```sh
+git apply --directory=gcc patches/ps3-prologue-barrier.patch
+```
+
 ## What the patches do not fix
 
 The order of the epilogue's `mtlr` and the stack restore is not fixed by
