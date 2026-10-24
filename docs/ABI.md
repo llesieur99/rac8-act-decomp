@@ -412,9 +412,9 @@ callee-saved registers; the save of the link register joins the body:
 0031519C  std    r5, 0x90(r1)       ; the save of the link register, here
 ```
 
-The reconstruction keeps the save in the prologue.  **That is the last
-difference between the two compilers** ✓✓✓, and it is what stands between
-a candidate and the retail's functions that read a global.
+The published reconstruction keeps the save in the prologue.  That is
+what still stands between a candidate and the retail's functions that
+read a global.  The cause was measured; it is the scheduler, below.
 
 **Two explanations were measured and ruled out.**  The store is marked
 *frame related*, which is what forbids the scheduler to move it — but
@@ -425,10 +425,68 @@ the distance between the store and the first call is spread from one
 instruction to twenty, so this is not a save that waits for the link
 register to be needed.
 
-What remains is the scheduler's own behaviour — and one symptom of it:
-the reconstruction lets the body's instructions be hoisted above the
-prologue (a load of the TOC ends up *before* the `stdu`), where the
-retail never does that.
+What remains is the scheduler.  Three mechanisms were measured on the
+SDK 2.7.0 compiler at `-O2`, with the link register kept in `r5`.
+
+**The hoist.**  A load of the TOC does not use the stack, so the second
+scheduling pass moves it *before* the `stdu`.  The `mflr` follows it,
+and ends up before the `stdu` as well.  The retail never does either:
+the `stdu` is first and the `mflr` is second in 21,801 of 21,824
+functions.  Grouping the `mflr` with the `stdu` and placing a barrier
+after that pair stops the hoist.  With that barrier switched off, the
+same four functions compile to the same bytes as the compiler that
+produced the 2,505 matches.  The catalogue itself was not re-run.
+
+**The alias set.**  The store of the link register is emitted in alias
+set 0, which conflicts with every memory operation whose address is not
+a known distinct base.  A load through a pointer is therefore a true
+dependence of the store, and the store cannot sink past it.  A load
+from `r2` is disambiguated and is not a dependence.  The epilogue
+already reloads the slot with `rs6000_sr_alias_set`.  Giving the store
+that same set removes the dependence: in the sched2 log, the pointer
+load no longer lists the store.  The store then sinks past an `addi`
+and past the save of a callee-saved register.
+
+**The CELL bypass.**  It does not sink past the load of the TOC, and
+the priority sort is not the reason.  In the same log the load's
+priority is 16 and the store's is 7, so the sort would issue the load
+first.  The barrier used for the measurement above is `gen_blockage`.
+That instruction has the default type `integer`, and the CELL
+reservation `cell-integer` applies to it.  The pipeline description in
+`dd3.md` gives a true dependence from `cell-integer` to `cell-load` a
+cost of 5 cycles, with no guard.  The barrier is a true dependence of
+every later instruction, so the load is queued for 5 cycles.  The same
+description's bypass to a store is guarded by `rs6000_use_address_p`,
+and the barrier sets no register, so the guard does not fire.  The
+store waits only the barrier's own latency, 2 cycles, and is issued
+while the load is still queued.
+
+A barrier that the recognizer does not classify as an integer
+instruction has no such bypass.  The load and the store then become
+ready together, and the sort issues the load first.  Measured on a
+function that adds one to its argument and passes a global:
+
+```
+stdu 1,-112(1)
+mflr 5
+lwz  9,.LC0@toc(2)
+addi 3,3,1
+std  5,128(1)
+```
+
+A function that only reads the global does the same: the load of the
+TOC, then the store, then the load through the pointer.  That second
+load waits 5 cycles on the first by the same bypass (`cell-load` to
+`cell-load`), so it is not ready when the store is issued.
+
+The frame-related flag plays no part in any of the three.  The
+scheduler never reads it.
+
+The barrier is off by default and is not published.  The one that
+reproduces the order above emits no instruction.  What is left is an
+instruction pattern of its own, of a type other than `integer`, `load`
+or `load_ext`, so the 5-cycle bypass cannot apply, and a re-run of the
+2,505 with the option off.
 
 ## The epilogue's two shapes
 

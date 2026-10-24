@@ -1,6 +1,6 @@
 # Where the project stands
 
-**Date:** 2026-10-21
+**Date:** 2026-10-23
 
 ## What exists
 
@@ -107,11 +107,12 @@ the functions — the behaviour of the compiler rebuilt here.  Only the two
 newest Insomniac games mix the registers, and in those the register is
 always the one the first argument is passed in.
 
-So the three readings are not blocked by the source form: they are blocked
-by a difference in the compiler's register allocation that has not been
-explained yet.  That is a better place to be stuck than it looks — the
-rest of the method (the compiler's identity, the flags, the linking model,
-the source form) is confirmed by three byte-exact matches in three games.
+The three readings are the register, and that difference is explained in
+[COMPILER.md](COMPILER.md): `-mps3-lr-reg` reproduces the retail register,
+and the allocator's own choice cannot be recovered from these sources.
+What still separates a candidate that reads a global from the retail
+bytes is where the save is issued.  That is measured in
+[ABI.md](ABI.md) (*Where the link register's save lands*).
 
 ## What the measurements taught about the ABI
 
@@ -132,9 +133,12 @@ function.
 
 ## The next step
 
-1. Close the three other readings: each is a few bytes away, and the
-   difference says what the source form still gets wrong — in all three,
-   the register the compiler keeps the link register in.
+1. Give the prologue barrier its own instruction pattern, of a type other
+   than `integer`, `load` or `load_ext`, still off by default.  The hoist,
+   the alias set and the CELL integer-to-load bypass are measured in
+   [ABI.md](ABI.md) (*Where the link register's save lands*).  Then re-run
+   the 2,505 with the option off: the four samples already match the
+   compiler that produced them.
 2. Work the catalogue from the top: the functions whose behaviour the
    analysis makes clear, one at a time, each one ending in a comparison.
 3. Qualify the flags on more than one function, so that
